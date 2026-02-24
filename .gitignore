@@ -1,0 +1,21 @@
+# Build output
+build/
+*.love
+
+# Love2D
+*.exe
+*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
