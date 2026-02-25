@@ -5,93 +5,98 @@ local Levels = {}
 
 -- Enemy templates
 Levels.ENEMY_TEMPLATES = {
-    goblin = {
-        name = "Goblin",
-        hp = 8,
-        attack = { n = 2, ne = 1, e = 2, se = 1, s = 2, sw = 1, w = 2, nw = 1 }
-    },
-    skeleton = {
-        name = "Skeleton",
+    rab = {
+        name = "rab",
         hp = 6,
-        attack = { n = 3, ne = 0, e = 3, se = 0, s = 3, sw = 0, w = 3, nw = 0 }
+        attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 }
     },
-    orc = {
-        name = "Orc",
-        hp = 12,
-        attack = { n = 3, ne = 2, e = 3, se = 2, s = 3, sw = 2, w = 3, nw = 2 }
+    L_Hand = {
+        name = "L_Hand",
+        hp = 4,
+        attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 }
     },
-    slime = {
-        name = "Slime",
+    R_Hand = {
+        name = "R_Hand",
+        hp = 4,
+        attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 }
+    },
+    PX = {
+        name = "pig",
+        hp = 8,
+        attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 }
+    },
+    pig = {
+        name = "PX",
         hp = 5,
-        attack = { n = 1, ne = 1, e = 1, se = 1, s = 1, sw = 1, w = 1, nw = 1 }
+        attack = { n = 1, ne = 0, e = 3, se = 0, s = 1, sw = 0, w = 0, nw = 0 }
     },
-    vampire = {
-        name = "Vampire",
-        hp = 10,
-        attack = { n = 4, ne = 2, e = 4, se = 2, s = 4, sw = 2, w = 4, nw = 2 }
+    TH = {
+        name = "TH",
+        hp = 6,
+        attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 }
     },
-    demon = {
-        name = "Demon",
-        hp = 15,
-        attack = { n = 4, ne = 3, e = 4, se = 3, s = 4, sw = 3, w = 4, nw = 3 }
+    God = {
+        name = "God",
+        hp = 13,
+        attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 }
     }
 }
 
 -- Level data
 Levels.data = {
-    -- Level 1: Goblin Nest
+    -- Level 1: rab Nest
     {
-        name = "Goblin Nest",
+        name = "rab Nest",
         enemies = {
-            { template = "goblin", x = 4, y = 1 },
-            { template = "goblin", x = 3, y = 4 }
+            { template = "rab", x = 4, y = 1 },
+            { template = "rab", x = 3, y = 4 }
         },
         branches = {2, 3}
     },
-    -- Level 2: Skeleton Graveyard (Route A)
+    -- Level 2: L_Hand Graveyard (Route A)
     {
         name = "Graveyard",
         enemies = {
-            { template = "skeleton", x = 1, y = 1 },
-            { template = "skeleton", x = 4, y = 4 },
-            { template = "skeleton", x = 4, y = 1 }
+            { template = "rab", x = 3, y = 3 },
+            { template = "L_Hand", x = 4, y = 4 },
+            { template = "R_Hand", x = 1, y = 4 }
         },
         branches = {4}
     },
-    -- Level 3: Slime Cave (Route B)
+    -- Level 3: pig Cave (Route B)
     {
-        name = "Slime Cave",
+        name = "pig Cave",
         enemies = {
-            { template = "slime", x = 1, y = 1 },
-            { template = "slime", x = 4, y = 1 },
-            { template = "slime", x = 1, y = 4 },
-            { template = "slime", x = 4, y = 4 }
+            { template = "pig", x = 1, y = 1 },
+            { template = "pig", x = 4, y = 1 },
+            { template = "pig", x = 1, y = 4 },
+            { template = "pig", x = 4, y = 4 }
         },
         branches = {4}
     },
-    -- Level 4: Orc Camp
+    -- Level 4: PX Camp
     {
-        name = "Orc Camp",
+        name = "PX Camp",
         enemies = {
-            { template = "orc", x = 3, y = 1 },
-            { template = "goblin", x = 4, y = 3 }
+            { template = "PX", x = 3, y = 1 },
+            { template = "rab", x = 4, y = 3 }
         },
         branches = {5, 6}
     },
-    -- Level 5: Vampire Castle (Route A)
+    -- Level 5: TH Castle (Route A)
     {
-        name = "Vampire Castle",
+        name = "TH Castle",
         enemies = {
-            { template = "vampire", x = 4, y = 2 },
-            { template = "skeleton", x = 1, y = 4 }
+            { template = "TH", x = 4, y = 2 },
+            { template = "L_Hand", x = 1, y = 4 }
         },
         branches = {7}
     },
-    -- Level 6: Demon Temple (Route B)
+    -- Level 6: God Temple (Route B)
     {
-        name = "Demon Temple",
+        name = "God Temple",
         enemies = {
-            { template = "demon", x = 3, y = 3 }
+            { template = "God", x = 3, y = 3 }
         },
         branches = {7}
     },
@@ -99,9 +104,9 @@ Levels.data = {
     {
         name = "Dark Throne",
         enemies = {
-            { template = "demon", x = 3, y = 2 },
-            { template = "vampire", x = 1, y = 4 },
-            { template = "orc", x = 4, y = 4 }
+            { template = "God", x = 3, y = 2 },
+            { template = "TH", x = 1, y = 4 },
+            { template = "PX", x = 4, y = 4 }
         },
         branches = {}
     }
