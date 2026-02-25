@@ -5,10 +5,10 @@ local Config = {}
 
 -- Grid configuration
 Config.GRID = {
-    SIZE = 4,
+    SIZE = 5,
     CELL_SIZE = 100,
-    OFFSET_X = 200,
-    OFFSET_Y = 100,
+    OFFSET_X = 75,
+    OFFSET_Y = 10,
 }
 
 -- 8 direction definitions
@@ -110,9 +110,9 @@ Config.UI = {
 -- Player default stats
 Config.PLAYER = {
     DEFAULT_HP = 20,
-    DEFAULT_ATTACK = { n = 3, ne = 2, e = 3, se = 2, s = 3, sw = 2, w = 3, nw = 2 },
-    DEFAULT_GRID_X = 2,
-    DEFAULT_GRID_Y = 2,
+    DEFAULT_ATTACK = { n = 3, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
+    DEFAULT_GRID_X = 3,
+    DEFAULT_GRID_Y = 4,
 }
 
 -- Game state enumeration

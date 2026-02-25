@@ -8,7 +8,7 @@ Levels.ENEMY_TEMPLATES = {
     rab = {
         name = "rab",
         hp = 6,
-        attack = { n = 2, ne = 1, e = 2, se = 1, s = 2, sw = 1, w = 2, nw = 1 }
+        attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 }
     },
     L_Hand = {
         name = "L_Hand",
@@ -48,8 +48,8 @@ Levels.data = {
     {
         name = "rab Nest",
         enemies = {
-            { template = "rab", x = 4, y = 1 },
-            { template = "rab", x = 3, y = 4 }
+            { template = "rab", x = 1, y = 1 },
+            { template = "rab", x = 5, y = 1 }
         },
         branches = {2, 3}
     },
@@ -57,9 +57,9 @@ Levels.data = {
     {
         name = "Graveyard",
         enemies = {
-            { template = "rab", x = 3, y = 3 },
-            { template = "L_Hand", x = 4, y = 4 },
-            { template = "R_Hand", x = 1, y = 4 }
+            { template = "rab", x = 3, y = 2 },
+            { template = "L_Hand", x = 5, y = 1 },
+            { template = "R_Hand", x = 1, y = 1 }
         },
         branches = {4}
     },
@@ -69,8 +69,8 @@ Levels.data = {
         enemies = {
             { template = "pig", x = 1, y = 1 },
             { template = "pig", x = 4, y = 1 },
-            { template = "pig", x = 1, y = 4 },
-            { template = "pig", x = 4, y = 4 }
+            { template = "pig", x = 1, y = 1 },
+            { template = "pig", x = 4, y = 1 }
         },
         branches = {4}
     },
