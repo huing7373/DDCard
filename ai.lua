@@ -25,15 +25,21 @@ function AI.getBestAttack(enemy, attacks)
 
     for _, attack in ipairs(attacks) do
         local score = AI.evaluateCombat(enemy, attack.target, attack.direction)
+        -- Prefer attacks with higher damage output
+        local damage = enemy.attack[attack.direction] or 0
+        score = score + damage  -- Bonus for dealing damage
         if score > bestScore then
             bestScore = score
             bestAttack = attack
         end
     end
 
-    -- Only attack if net damage is positive or can kill
-    if bestScore >= 0 or (bestAttack and bestAttack.target.hp <= (enemy.attack[bestAttack.direction] or 0)) then
-        return bestAttack
+    -- Always attack if we can deal damage, be more aggressive
+    if bestAttack then
+        local damage = enemy.attack[bestAttack.direction] or 0
+        if damage > 0 then
+            return bestAttack
+        end
     end
 
     return nil

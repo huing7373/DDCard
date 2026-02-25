@@ -8,7 +8,7 @@ Levels.ENEMY_TEMPLATES = {
     rab = {
         name = "rab",
         hp = 6,
-        attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 }
+        attack = { n = 2, ne = 1, e = 2, se = 1, s = 2, sw = 1, w = 2, nw = 1 }
     },
     L_Hand = {
         name = "L_Hand",
