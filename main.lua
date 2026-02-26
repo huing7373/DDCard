@@ -153,14 +153,25 @@ loadLevel = function(levelIndex)
         end
     end
 
+    -- Reset player position to default before spawning enemies
+    if gameState.player then
+        Grid.removeCard(gameState.grid, gameState.player)
+        Grid.placeCard(gameState.grid, gameState.player, Config.PLAYER.DEFAULT_GRID_X, Config.PLAYER.DEFAULT_GRID_Y)
+    end
+
     -- Create new enemies with difficulty scaling
     for _, enemyData in ipairs(levelData.enemies) do
-        local enemyParams = Levels.createEnemyFromTemplate(enemyData.template, enemyData.x, enemyData.y)
-        if enemyParams then
-            enemyParams.type = Card.TYPE.ENEMY
-            local enemy = Card.new(enemyParams)
-            Roguelike.applyDifficultyToEnemy(enemy)
-            placeCard(enemy)
+        -- Skip if enemy would spawn on player's position
+        if enemyData.x == gameState.player.gridX and enemyData.y == gameState.player.gridY then
+            print(string.format("Warning: Enemy spawn at player position (%d,%d), skipping", enemyData.x, enemyData.y))
+        else
+            local enemyParams = Levels.createEnemyFromTemplate(enemyData.template, enemyData.x, enemyData.y)
+            if enemyParams then
+                enemyParams.type = Card.TYPE.ENEMY
+                local enemy = Card.new(enemyParams)
+                Roguelike.applyDifficultyToEnemy(enemy)
+                placeCard(enemy)
+            end
         end
     end
 
@@ -654,7 +665,40 @@ function performEnemyAction(enemy)
 
     local decision = AI.decideAction(enemy, gameContext, Card)
 
-    if decision.type == "attack" then
+    if decision.type == "skill" then
+        local skillData = decision.data
+        local skill = skillData.skill
+        local direction = skillData.direction
+
+        -- Create skill execution context
+        local skillContext = {
+            player = gameState.player,
+            grid = gameState.grid,
+            DIRECTIONS = DIRECTIONS,
+            moveCard = moveCard,
+            removeCard = removeCard,
+            createDamageText = function(target, damage)
+                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+                createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
+            end,
+            createHealText = function(target, heal)
+                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+                createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL)
+            end,
+            createShieldText = function(target, amount)
+                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+                createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD)
+            end
+        }
+
+        local success = skill.execute(enemy, direction, skillContext)
+        if success then
+            skill.currentCooldown = skill.cooldown
+            print(string.format("Enemy %s used skill: %s", enemy.name, skill.name))
+        else
+            print(string.format("Enemy %s failed to use skill: %s", enemy.name, skill.name))
+        end
+    elseif decision.type == "attack" then
         local attack = decision.data
         performAttack(enemy, attack.target, attack.direction)
         print(string.format("Enemy %s attacks player!", enemy.name))
@@ -667,11 +711,25 @@ function performEnemyAction(enemy)
     end
 end
 
+-- Tick enemy skill cooldowns
+local function tickEnemyCooldowns()
+    for _, enemy in ipairs(gameState.enemies) do
+        if enemy.skills then
+            for _, skill in ipairs(enemy.skills) do
+                if skill.currentCooldown > 0 then
+                    skill.currentCooldown = skill.currentCooldown - 1
+                end
+            end
+        end
+    end
+end
+
 -- Start player turn
 startPlayerTurn = function()
     gameState.state = GAME_STATE.PLAYER_TURN
     gameState.turnNumber = gameState.turnNumber + 1
     Skills.tickCooldowns()
+    tickEnemyCooldowns()
     print(string.format("Turn %d - Player turn start", gameState.turnNumber))
 end
 
@@ -812,6 +870,11 @@ function drawCardDetailPanel()
     local panelX, panelY = 10, 100
     local panelW, panelH = 180, 200
 
+    -- Increase panel height if enemy has skills
+    if card.skills and #card.skills > 0 then
+        panelH = panelH + 20 + #card.skills * 18
+    end
+
     local borderColor = card.type == Card.TYPE.PLAYER and Config.COLORS.PLAYER_BORDER or Config.COLORS.ENEMY_BORDER
     UI.drawPanel(panelX, panelY, panelW, panelH, {0.15, 0.15, 0.2, 0.95}, borderColor)
 
@@ -856,6 +919,23 @@ function drawCardDetailPanel()
 
     love.graphics.setColor(0.6, 0.6, 0.6)
     love.graphics.print(string.format("Pos: (%d, %d)", card.gridX, card.gridY), panelX + 10, panelY + 150)
+
+    -- Display enemy skills
+    if card.skills and #card.skills > 0 then
+        love.graphics.setColor(0.8, 0.5, 1)
+        love.graphics.print("Skills:", panelX + 10, panelY + 170)
+
+        for i, skill in ipairs(card.skills) do
+            local skillY = panelY + 170 + i * 18
+            if skill.currentCooldown > 0 then
+                love.graphics.setColor(0.5, 0.5, 0.5)
+                love.graphics.print(string.format("  %s (CD:%d)", skill.name, skill.currentCooldown), panelX + 10, skillY)
+            else
+                love.graphics.setColor(0.9, 0.8, 1)
+                love.graphics.print(string.format("  %s (Ready)", skill.name), panelX + 10, skillY)
+            end
+        end
+    end
 end
 
 -- Draw turn info

@@ -1,6 +1,8 @@
 -- Level Configuration Module
 -- Define level data and enemy templates
 
+local Skills = require("skills")
+
 local Levels = {}
 
 -- Enemy templates
@@ -33,12 +35,14 @@ Levels.ENEMY_TEMPLATES = {
     TH = {
         name = "TH",
         hp = 6,
-        attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 }
+        attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
+        skills = { "whirlwind" }
     },
     God = {
         name = "God",
         hp = 13,
-        attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 }
+        attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
+        skills = { "whirlwind", "shield" }
     }
 }
 
@@ -129,6 +133,25 @@ function Levels.createEnemyFromTemplate(templateName, x, y)
         return nil
     end
 
+    -- Initialize enemy skills from template
+    local enemySkills = nil
+    if template.skills then
+        enemySkills = {}
+        for _, skillId in ipairs(template.skills) do
+            local skillDef = Skills.getSkillById(skillId)
+            if skillDef then
+                table.insert(enemySkills, {
+                    id = skillDef.id,
+                    name = skillDef.name,
+                    description = skillDef.description,
+                    cooldown = skillDef.cooldown,
+                    currentCooldown = 0,
+                    execute = skillDef.execute
+                })
+            end
+        end
+    end
+
     return {
         name = template.name,
         hp = template.hp,
@@ -144,7 +167,8 @@ function Levels.createEnemyFromTemplate(templateName, x, y)
             nw = template.attack.nw
         },
         gridX = x,
-        gridY = y
+        gridY = y,
+        skills = enemySkills
     }
 end
 

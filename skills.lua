@@ -144,6 +144,16 @@ Skills.SKILLS = {
     }
 }
 
+-- Get skill definition by ID
+function Skills.getSkillById(skillId)
+    for _, skillDef in ipairs(Skills.SKILLS) do
+        if skillDef.id == skillId then
+            return skillDef
+        end
+    end
+    return nil
+end
+
 -- Player skill slots (max 4)
 local playerSkills = {}
 
