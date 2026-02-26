@@ -691,7 +691,7 @@ function performEnemyAction(enemy)
             end
         }
 
-        local success = skill.execute(enemy, direction, skillContext)
+        local success = skill.execute(enemy, direction, skillContext, skill.params or {})
         if success then
             skill.currentCooldown = skill.cooldown
             print(string.format("Enemy %s used skill: %s", enemy.name, skill.name))

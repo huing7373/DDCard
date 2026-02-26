@@ -36,13 +36,18 @@ Levels.ENEMY_TEMPLATES = {
         name = "TH",
         hp = 6,
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
-        skills = { "whirlwind" }
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     God = {
         name = "God",
         hp = 13,
         attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
-        skills = { "whirlwind", "shield" }
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.5 } },
+            { id = "shield", params = { amount = 8 } }
+        }
     }
 }
 
@@ -137,15 +142,38 @@ function Levels.createEnemyFromTemplate(templateName, x, y)
     local enemySkills = nil
     if template.skills then
         enemySkills = {}
-        for _, skillId in ipairs(template.skills) do
+        for _, skillEntry in ipairs(template.skills) do
+            -- Support both simple format ("skillId") and detailed format ({ id = "skillId", params = {...} })
+            local skillId, customParams
+            if type(skillEntry) == "string" then
+                skillId = skillEntry
+                customParams = nil
+            else
+                skillId = skillEntry.id
+                customParams = skillEntry.params
+            end
+
             local skillDef = Skills.getSkillById(skillId)
             if skillDef then
+                -- Deep copy default params, then override with custom params
+                local paramsCopy = {}
+                if skillDef.params then
+                    for k, v in pairs(skillDef.params) do
+                        paramsCopy[k] = v
+                    end
+                end
+                if customParams then
+                    for k, v in pairs(customParams) do
+                        paramsCopy[k] = v
+                    end
+                end
                 table.insert(enemySkills, {
                     id = skillDef.id,
                     name = skillDef.name,
                     description = skillDef.description,
                     cooldown = skillDef.cooldown,
                     currentCooldown = 0,
+                    params = paramsCopy,
                     execute = skillDef.execute
                 })
             end

@@ -14,16 +14,22 @@ Skills.SKILLS = {
         description = "Move 2 tiles, damage enemies in path",
         cooldown = 3,
         currentCooldown = 0,
-        execute = function(user, direction, game)
+        params = {
+            range = 2,           -- 冲锋距离
+            damageMultiplier = 1.0 -- 伤害倍率
+        },
+        execute = function(user, direction, game, params)
             local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
             local GRID_SIZE = Config.GRID.SIZE
             local dir = DIRECTIONS[direction]
             if not dir then return false end
 
-            local damage = user.attack[direction] or 0
+            local baseDamage = user.attack[direction] or 0
+            local damage = math.floor(baseDamage * (params.damageMultiplier or 1.0))
             local moved = false
+            local range = params.range or 2
 
-            for step = 1, 2 do
+            for step = 1, range do
                 local newX = user.gridX + dir.dx
                 local newY = user.gridY + dir.dy
 
@@ -58,7 +64,11 @@ Skills.SKILLS = {
         description = "Deal damage, heal 50% of damage dealt",
         cooldown = 4,
         currentCooldown = 0,
-        execute = function(user, direction, game)
+        params = {
+            bonusDamage = 2,    -- 额外伤害
+            healPercent = 0.5   -- 治疗比例
+        },
+        execute = function(user, direction, game, params)
             local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
             local GRID_SIZE = Config.GRID.SIZE
             local dir = DIRECTIONS[direction]
@@ -76,8 +86,10 @@ Skills.SKILLS = {
                 return false
             end
 
-            local damage = (user.attack[direction] or 0) + 2
-            local heal = math.ceil(damage * 0.5)
+            local bonusDamage = params.bonusDamage or 2
+            local healPercent = params.healPercent or 0.5
+            local damage = (user.attack[direction] or 0) + bonusDamage
+            local heal = math.ceil(damage * healPercent)
 
             targetCell.card.hp = targetCell.card.hp - damage
             user.hp = math.min(user.hp + heal, user.maxHp)
@@ -100,10 +112,14 @@ Skills.SKILLS = {
         description = "Attack all 8 adjacent enemies",
         cooldown = 5,
         currentCooldown = 0,
-        execute = function(user, _, game)
+        params = {
+            damageMultiplier = 1.0 -- 伤害倍率
+        },
+        execute = function(user, _, game, params)
             local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
             local GRID_SIZE = Config.GRID.SIZE
             local hitAny = false
+            local damageMultiplier = params.damageMultiplier or 1.0
 
             for dirKey, dir in pairs(DIRECTIONS) do
                 local targetX = user.gridX + dir.dx
@@ -112,7 +128,8 @@ Skills.SKILLS = {
                 if targetX >= 1 and targetX <= GRID_SIZE and targetY >= 1 and targetY <= GRID_SIZE then
                     local targetCell = game.grid[targetY][targetX]
                     if targetCell.card and targetCell.card.type ~= user.type then
-                        local damage = (user.attack[dirKey] or 0)
+                        local baseDamage = user.attack[dirKey] or 0
+                        local damage = math.floor(baseDamage * damageMultiplier)
                         targetCell.card.hp = targetCell.card.hp - damage
                         game.createDamageText(targetCell.card, damage)
 
@@ -135,8 +152,11 @@ Skills.SKILLS = {
         description = "Gain temporary shield",
         cooldown = 4,
         currentCooldown = 0,
-        execute = function(user, _, game)
-            local shieldAmount = 5
+        params = {
+            amount = 5 -- 护盾值
+        },
+        execute = function(user, _, game, params)
+            local shieldAmount = params.amount or 5
             user.shield = (user.shield or 0) + shieldAmount
             game.createShieldText(user, shieldAmount)
             return true
@@ -177,12 +197,21 @@ function Skills.learnSkill(skillId)
 
     for _, skillDef in ipairs(Skills.SKILLS) do
         if skillDef.id == skillId then
+            -- Deep copy params
+            local paramsCopy = nil
+            if skillDef.params then
+                paramsCopy = {}
+                for k, v in pairs(skillDef.params) do
+                    paramsCopy[k] = v
+                end
+            end
             local newSkill = {
                 id = skillDef.id,
                 name = skillDef.name,
                 description = skillDef.description,
                 cooldown = skillDef.cooldown,
                 currentCooldown = 0,
+                params = paramsCopy,
                 execute = skillDef.execute
             }
             table.insert(playerSkills, newSkill)
@@ -209,7 +238,7 @@ function Skills.useSkill(index, direction, gameContext)
         return false, "On cooldown"
     end
 
-    local success = skill.execute(gameContext.player, direction, gameContext)
+    local success = skill.execute(gameContext.player, direction, gameContext, skill.params or {})
     if success then
         skill.currentCooldown = skill.cooldown
         return true
