@@ -868,11 +868,11 @@ function drawCardDetailPanel()
     if not card then return end
 
     local panelX, panelY = 10, 100
-    local panelW, panelH = 180, 200
+    local panelW, panelH = 180, 220
 
     -- Increase panel height if enemy has skills
     if card.skills and #card.skills > 0 then
-        panelH = panelH + 20 + #card.skills * 18
+        panelH = panelH + #card.skills * 18
     end
 
     local borderColor = card.type == Card.TYPE.PLAYER and Config.COLORS.PLAYER_BORDER or Config.COLORS.ENEMY_BORDER
@@ -920,11 +920,11 @@ function drawCardDetailPanel()
     love.graphics.setColor(0.6, 0.6, 0.6)
     love.graphics.print(string.format("Pos: (%d, %d)", card.gridX, card.gridY), panelX + 10, panelY + 150)
 
-    -- Display enemy skills
-    if card.skills and #card.skills > 0 then
-        love.graphics.setColor(0.8, 0.5, 1)
-        love.graphics.print("Skills:", panelX + 10, panelY + 170)
+    -- Display skills
+    love.graphics.setColor(0.8, 0.5, 1)
+    love.graphics.print("Skills:", panelX + 10, panelY + 170)
 
+    if card.skills and #card.skills > 0 then
         for i, skill in ipairs(card.skills) do
             local skillY = panelY + 170 + i * 18
             if skill.currentCooldown > 0 then
@@ -935,6 +935,9 @@ function drawCardDetailPanel()
                 love.graphics.print(string.format("  %s (Ready)", skill.name), panelX + 10, skillY)
             end
         end
+    else
+        love.graphics.setColor(0.5, 0.5, 0.5)
+        love.graphics.print("  No Skills", panelX + 10, panelY + 188)
     end
 end
 
