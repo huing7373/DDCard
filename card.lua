@@ -35,6 +35,9 @@ function Card.new(params)
     self.gridX = params.gridX or 1
     self.gridY = params.gridY or 1
 
+    -- 技能列表
+    self.skills = params.skills
+
     return self
 end
 
