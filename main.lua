@@ -71,6 +71,7 @@ local enterMoveMode, endPlayerTurn, startPlayerTurn
 local performAttack, grantKillReward
 local createDamageText, checkGameEnd
 local loadLevel, restartGame
+local createSkillContext
 
 -- Initialize game
 function love.load()
@@ -243,6 +244,41 @@ local function createSkillEffect(effectType, params)
     table.insert(animState.skillEffects, effect)
 end
 
+-- Create skill execution context (shared between player and enemy skill use)
+createSkillContext = function()
+    return {
+        player = gameState.player,
+        grid = gameState.grid,
+        DIRECTIONS = DIRECTIONS,
+        moveCard = moveCard,
+        removeCard = removeCard,
+        createDamageText = function(target, damage)
+            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+            createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
+            if target.triggerFlash then
+                target:triggerFlash(Config.EFFECTS.FLASH_DURATION)
+            end
+        end,
+        createHealText = function(target, heal)
+            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+            createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL, false)
+        end,
+        createShieldText = function(target, amount)
+            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+            createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD, false)
+        end,
+        triggerScreenShake = function(intensity, duration)
+            triggerScreenShake(intensity or Config.EFFECTS.SKILL_SHAKE_INTENSITY, duration or Config.EFFECTS.SHAKE_DURATION)
+        end,
+        createSkillEffect = function(effectType, params)
+            createSkillEffect(effectType, params)
+        end,
+        getScreenPos = function(gridX, gridY)
+            return Utils.getGridCellCenter(gridX, gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+        end,
+    }
+end
+
 -- Update card flash timers
 local function updateCardEffects(dt)
     for _, card in ipairs(gameState.cards) do
@@ -408,11 +444,9 @@ function drawGrid()
             if isMoveTarget then
                 local hasAttackPower = moveTarget and moveTarget.attackPower and moveTarget.attackPower > 0
                 if hasAttackPower then
-                    -- Bright green for directions with attack power
                     love.graphics.setColor(Config.COLORS.MOVE_TARGET)
                 else
-                    -- Dim color for move-only directions (no attack power)
-                    love.graphics.setColor(0.15, 0.35, 0.15, 0.5)
+                    love.graphics.setColor(Config.COLORS.MOVE_TARGET_DIM)
                 end
                 love.graphics.rectangle("fill", cellX, cellY, CELL_SIZE, CELL_SIZE)
             end
@@ -429,7 +463,7 @@ function drawGrid()
                 if hasAttackPower then
                     love.graphics.setColor(Config.COLORS.MOVE_BORDER)
                 else
-                    love.graphics.setColor(0.3, 0.5, 0.3)  -- Dimmer border for move-only
+                    love.graphics.setColor(Config.COLORS.MOVE_BORDER_DIM)
                 end
             else
                 love.graphics.setColor(Config.COLORS.GRID_BORDER)
@@ -443,18 +477,17 @@ function drawGrid()
             else
                 -- Show attack power indicator on move targets
                 if isMoveTarget and moveTarget and moveTarget.attackPower and moveTarget.attackPower > 0 then
-                    love.graphics.setColor(1, 0.9, 0.3)  -- Gold color for attack power
+                    love.graphics.setColor(Config.COLORS.ATTACK_POWER_TEXT)
                     local atkText = tostring(moveTarget.attackPower)
                     local font = love.graphics.getFont()
                     local textW = font:getWidth(atkText)
                     local textH = font:getHeight()
                     love.graphics.print(atkText, cellX + CELL_SIZE/2 - textW/2, cellY + CELL_SIZE/2 - textH/2)
                 elseif isMoveTarget then
-                    -- Show arrow or dot for move-only
-                    love.graphics.setColor(0.4, 0.6, 0.4)
+                    love.graphics.setColor(Config.COLORS.MOVE_INDICATOR)
                     love.graphics.circle("fill", cellX + CELL_SIZE/2, cellY + CELL_SIZE/2, 5)
                 else
-                    love.graphics.setColor(0.5, 0.5, 0.5)
+                    love.graphics.setColor(Config.COLORS.GRID_COORD)
                     love.graphics.print(string.format("%d,%d", x, y), cellX + 5, cellY + 5)
                 end
             end
@@ -530,39 +563,7 @@ end
 function useSelectedSkill(direction)
     if not uiState.selectedSkillIndex then return end
 
-    local gameContext = {
-        player = gameState.player,
-        grid = gameState.grid,
-        DIRECTIONS = DIRECTIONS,
-        moveCard = moveCard,
-        removeCard = removeCard,
-        createDamageText = function(target, damage)
-            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
-            -- Trigger flash on damaged target
-            if target.triggerFlash then
-                target:triggerFlash(Config.EFFECTS.FLASH_DURATION)
-            end
-        end,
-        createHealText = function(target, heal)
-            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL, false)
-        end,
-        createShieldText = function(target, amount)
-            local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD, false)
-        end,
-        triggerScreenShake = function(intensity, duration)
-            triggerScreenShake(intensity or Config.EFFECTS.SKILL_SHAKE_INTENSITY, duration or Config.EFFECTS.SHAKE_DURATION)
-        end,
-        createSkillEffect = function(effectType, params)
-            createSkillEffect(effectType, params)
-        end,
-        getScreenPos = function(gridX, gridY)
-            return Utils.getGridCellCenter(gridX, gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-        end,
-    }
-
+    local gameContext = createSkillContext()
     local success, msg = Skills.useSkill(uiState.selectedSkillIndex, direction, gameContext)
 
     uiState.selectedSkillIndex = nil
@@ -612,19 +613,8 @@ function love.mousepressed(x, y, button)
         local clickedCard = getCardAtScreen(adjustedX, adjustedY)
         local gridPos = getGridAtScreen(adjustedX, adjustedY)
 
-        print(string.format("[DEBUG] Click: raw=(%d,%d) adjusted=(%d,%d) gridPos=%s isMoving=%s",
-            x, y, adjustedX, adjustedY,
-            gridPos and string.format("(%d,%d)", gridPos.x, gridPos.y) or "nil",
-            tostring(uiState.isMoving)))
-
         if uiState.isMoving and gridPos then
-            print(string.format("[DEBUG] Attempting attack/move at grid (%d,%d)", gridPos.x, gridPos.y))
-            print(string.format("[DEBUG] attackTargets count: %d", #uiState.attackTargets))
-            for i, t in ipairs(uiState.attackTargets) do
-                print(string.format("[DEBUG]   target %d: pos=(%d,%d) dir=%s", i, t.x, t.y, t.direction))
-            end
             local attackResult = tryAttackAt(gameState.player, gridPos.x, gridPos.y)
-            print(string.format("[DEBUG] attackResult: %s", tostring(attackResult)))
             if not attackResult then
                 tryMoveCard(gameState.player, gridPos.x, gridPos.y)
             end
@@ -700,12 +690,6 @@ enterMoveMode = function(card)
     uiState.isMoving = true
     uiState.selectedCard = card
     uiState.moveTargets, uiState.attackTargets = Grid.findTargets(gameState.grid, card, DIRECTIONS, GRID_SIZE)
-    print(string.format("[DEBUG] enterMoveMode: card at (%d,%d)", card.gridX, card.gridY))
-    print(string.format("[DEBUG]   moveTargets: %d, attackTargets: %d", #uiState.moveTargets, #uiState.attackTargets))
-    for i, t in ipairs(uiState.attackTargets) do
-        print(string.format("[DEBUG]   attackTarget %d: pos=(%d,%d) dir=%s target=%s",
-            i, t.x, t.y, t.direction, t.target and t.target.name or "nil"))
-    end
 end
 
 -- Try to move card
@@ -743,13 +727,8 @@ end
 
 -- Try attack at position
 function tryAttackAt(attacker, targetX, targetY)
-    print(string.format("[DEBUG] tryAttackAt: looking for (%d,%d)", targetX, targetY))
-    for i, target in ipairs(uiState.attackTargets) do
-        print(string.format("[DEBUG]   comparing with target %d: (%d,%d) match=%s",
-            i, target.x, target.y,
-            tostring(target.x == targetX and target.y == targetY)))
+    for _, target in ipairs(uiState.attackTargets) do
         if target.x == targetX and target.y == targetY then
-            print("[DEBUG]   MATCH FOUND! Performing attack...")
             performAttack(attacker, target.target, target.direction)
             uiState.isMoving = false
             uiState.moveTargets = {}
@@ -760,7 +739,6 @@ function tryAttackAt(attacker, targetX, targetY)
             return true
         end
     end
-    print("[DEBUG]   No match found")
     return false
 end
 
@@ -891,40 +869,7 @@ function performEnemyAction(enemy)
         local skill = skillData.skill
         local direction = skillData.direction
 
-        -- Create skill execution context
-        local skillContext = {
-            player = gameState.player,
-            grid = gameState.grid,
-            DIRECTIONS = DIRECTIONS,
-            moveCard = moveCard,
-            removeCard = removeCard,
-            createDamageText = function(target, damage)
-                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-                createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
-                -- Trigger flash on damaged target
-                if target.triggerFlash then
-                    target:triggerFlash(Config.EFFECTS.FLASH_DURATION)
-                end
-            end,
-            createHealText = function(target, heal)
-                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-                createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL, false)
-            end,
-            createShieldText = function(target, amount)
-                local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-                createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD, false)
-            end,
-            triggerScreenShake = function(intensity, duration)
-                triggerScreenShake(intensity or Config.EFFECTS.SKILL_SHAKE_INTENSITY, duration or Config.EFFECTS.SHAKE_DURATION)
-            end,
-            createSkillEffect = function(effectType, params)
-                createSkillEffect(effectType, params)
-            end,
-            getScreenPos = function(gridX, gridY)
-                return Utils.getGridCellCenter(gridX, gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            end,
-        }
-
+        local skillContext = createSkillContext()
         local success = skill.execute(enemy, direction, skillContext, skill.params or {})
         if success then
             skill.currentCooldown = skill.cooldown

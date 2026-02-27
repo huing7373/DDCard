@@ -1,6 +1,8 @@
 -- 卡牌模块
 -- 定义卡牌数据结构和绘制方法
 
+local Config = require("config")
+
 local Card = {}
 Card.__index = Card
 
@@ -71,8 +73,9 @@ function Card:draw(cellX, cellY, cellSize)
     -- Draw shield glow border if has shield
     if self.shield and self.shield > 0 then
         local time = love.timer.getTime()
-        local glowIntensity = 0.5 + 0.3 * math.sin(time * 3)
-        love.graphics.setColor(0.3, 0.6, 1, glowIntensity)
+        local glowIntensity = 0.5 + 0.3 * math.sin(time * Config.EFFECTS.SHIELD_GLOW_SPEED)
+        local c = Config.COLORS.SHIELD_GLOW
+        love.graphics.setColor(c[1], c[2], c[3], glowIntensity)
         love.graphics.setLineWidth(3)
         love.graphics.rectangle("line", cardX - 2, cardY - 2, cardW + 4, cardH + 4, 7, 7)
         love.graphics.setLineWidth(1)
@@ -80,9 +83,9 @@ function Card:draw(cellX, cellY, cellSize)
 
     -- 根据类型选择颜色
     if self.type == Card.TYPE.PLAYER then
-        love.graphics.setColor(0.2, 0.4, 0.8)  -- 蓝色-玩家
+        love.graphics.setColor(Config.COLORS.PLAYER_BG)
     else
-        love.graphics.setColor(0.7, 0.2, 0.2)  -- 红色-敌人
+        love.graphics.setColor(Config.COLORS.ENEMY_BG)
     end
 
     -- 绘制卡牌背景
@@ -96,9 +99,9 @@ function Card:draw(cellX, cellY, cellSize)
 
     -- 绘制边框
     if self.type == Card.TYPE.PLAYER then
-        love.graphics.setColor(0.3, 0.6, 1)
+        love.graphics.setColor(Config.COLORS.PLAYER_BORDER)
     else
-        love.graphics.setColor(1, 0.3, 0.3)
+        love.graphics.setColor(Config.COLORS.ENEMY_BORDER)
     end
     love.graphics.rectangle("line", cardX, cardY, cardW, cardH, 5, 5)
 
@@ -118,7 +121,7 @@ function Card:draw(cellX, cellY, cellSize)
     if self.shield and self.shield > 0 then
         local font = love.graphics.getFont()
         local shieldText = tostring(self.shield)
-        love.graphics.setColor(0.3, 0.6, 1)
+        love.graphics.setColor(Config.COLORS.SHIELD_GLOW)
         love.graphics.print(shieldText, cardX + cardW - font:getWidth(shieldText) - 3, cardY + 3)
     end
 end
@@ -131,17 +134,17 @@ function Card:drawHP(cardX, cardY, cardW)
     local hpBarX = cardX + 5
 
     -- HP条背景
-    love.graphics.setColor(0.3, 0.3, 0.3)
+    love.graphics.setColor(Config.COLORS.HP_BAR_BG)
     love.graphics.rectangle("fill", hpBarX, hpBarY, hpBarW, hpBarH, 2, 2)
 
     -- HP条前景
     local hpPercent = self.hp / self.maxHp
     if hpPercent > 0.5 then
-        love.graphics.setColor(0.2, 0.8, 0.2)  -- 绿色
+        love.graphics.setColor(Config.COLORS.HP_HIGH)
     elseif hpPercent > 0.25 then
-        love.graphics.setColor(0.8, 0.8, 0.2)  -- 黄色
+        love.graphics.setColor(Config.COLORS.HP_MED)
     else
-        love.graphics.setColor(0.8, 0.2, 0.2)  -- 红色
+        love.graphics.setColor(Config.COLORS.HP_LOW)
     end
     love.graphics.rectangle("fill", hpBarX, hpBarY, hpBarW * hpPercent, hpBarH, 2, 2)
 
@@ -177,14 +180,14 @@ function Card:drawAttackDirections(cardX, cardY, cardW, cardH)
         local atk = self.attack[dir.key]
         if atk > 0 then
             -- 攻击力大于0时显示
-            love.graphics.setColor(1, 0.9, 0.3)  -- 金色
+            love.graphics.setColor(Config.COLORS.ATTACK_GOLD)
             local atkText = tostring(atk)
             local textW = font:getWidth(atkText)
             local textH = font:getHeight()
             love.graphics.print(atkText, centerX + dir.dx - textW / 2, centerY + dir.dy - textH / 2)
         else
             -- 攻击力为0时显示灰色点
-            love.graphics.setColor(0.4, 0.4, 0.4)
+            love.graphics.setColor(Config.COLORS.ATTACK_ZERO)
             love.graphics.circle("fill", centerX + dir.dx, centerY + dir.dy, 2)
         end
     end

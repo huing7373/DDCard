@@ -52,14 +52,19 @@ Config.COLORS = {
 
     -- Grid highlighting
     MOVE_TARGET = {0.2, 0.6, 0.2, 0.5},
+    MOVE_TARGET_DIM = {0.15, 0.35, 0.15, 0.5},
     ATTACK_TARGET = {0.7, 0.2, 0.2, 0.5},
     MOVE_BORDER = {0.3, 0.9, 0.3},
+    MOVE_BORDER_DIM = {0.3, 0.5, 0.3},
     ATTACK_BORDER = {1, 0.3, 0.3},
+    ATTACK_POWER_TEXT = {1, 0.9, 0.3},
+    MOVE_INDICATOR = {0.4, 0.6, 0.4},
 
     -- Grid cells
     GRID_EVEN = {0.2, 0.2, 0.25},
     GRID_ODD = {0.25, 0.25, 0.3},
     GRID_BORDER = {0.4, 0.4, 0.5},
+    GRID_COORD = {0.5, 0.5, 0.5},
 
     -- Damage text
     DAMAGE = {1, 0.3, 0.3},
@@ -67,6 +72,15 @@ Config.COLORS = {
     HEAL = {0.3, 1, 0.3},
     SHIELD = {0.5, 0.7, 1},
     SOUL = {0.8, 0.5, 1},
+
+    -- Card rendering
+    SHIELD_GLOW = {0.3, 0.6, 1},
+    ATTACK_GOLD = {1, 0.9, 0.3},
+    ATTACK_ZERO = {0.4, 0.4, 0.4},
+    HP_BAR_BG = {0.3, 0.3, 0.3},
+    HP_HIGH = {0.2, 0.8, 0.2},
+    HP_MED = {0.8, 0.8, 0.2},
+    HP_LOW = {0.8, 0.2, 0.2},
 
     -- UI elements
     BUTTON_BG = {0.25, 0.25, 0.35},
@@ -133,6 +147,12 @@ Config.EFFECTS = {
     DAMAGE_SCALE_START = 1.5,       -- Initial damage number scale
     SKILL_EFFECT_DURATION = 0.3,    -- Skill visual effect duration
     SHIELD_GLOW_SPEED = 3,          -- Shield glow pulse speed
+}
+
+-- AI decision parameters
+Config.AI = {
+    SHIELD_HP_THRESHOLD = 0.3,      -- Use shield when HP below 30%
+    LIFESTEAL_HP_THRESHOLD = 0.5,   -- Use lifesteal when HP below 50%
 }
 
 return Config

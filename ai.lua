@@ -123,8 +123,8 @@ function AI.getBestSkill(enemy, game, Card)
 
     for _, skill in ipairs(enemy.skills) do
         if skill.currentCooldown == 0 then
-            -- Shield: use when HP < 30%
-            if skill.id == "shield" and hpPercent < 0.3 then
+            -- Shield: use when HP below threshold
+            if skill.id == "shield" and hpPercent < Config.AI.SHIELD_HP_THRESHOLD then
                 return { skill = skill, direction = nil }
             end
 
@@ -141,8 +141,8 @@ function AI.getBestSkill(enemy, game, Card)
                 end
             end
 
-            -- Lifesteal: use when HP < 50% and adjacent to player
-            if skill.id == "lifesteal" and hpPercent < 0.5 and adjacentTargets >= 1 then
+            -- Lifesteal: use when HP below threshold and adjacent to player
+            if skill.id == "lifesteal" and hpPercent < Config.AI.LIFESTEAL_HP_THRESHOLD and adjacentTargets >= 1 then
                 -- Find direction to player
                 local DIRECTIONS = Config.DIRECTIONS
                 local gridSize = game.gridSize or Config.GRID.SIZE
