@@ -77,7 +77,15 @@ local createSkillContext
 
 -- Initialize game
 function love.load()
-    love.graphics.setNewFont(14)
+    -- 加载支持中文的字体（微软雅黑）
+    local fontPath = "msyh.ttc"
+    local success, font = pcall(love.graphics.newFont, fontPath, 14)
+    if success then
+        love.graphics.setFont(font)
+    else
+        love.graphics.setNewFont(14)
+        print("Warning: Chinese font not found, using default font")
+    end
 
     -- Initialize grid
     gameState.grid = Grid.new(GRID_SIZE)
