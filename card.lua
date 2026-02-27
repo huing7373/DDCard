@@ -38,7 +38,26 @@ function Card.new(params)
     -- 技能列表
     self.skills = params.skills
 
+    -- Visual effect state
+    self.flashTimer = 0  -- Flash when hit
+    self.shield = params.shield or 0  -- Shield amount
+
     return self
+end
+
+-- Update card visual effects
+function Card:update(dt)
+    if self.flashTimer > 0 then
+        self.flashTimer = self.flashTimer - dt
+        if self.flashTimer < 0 then
+            self.flashTimer = 0
+        end
+    end
+end
+
+-- Trigger hit flash effect
+function Card:triggerFlash(duration)
+    self.flashTimer = duration or 0.15
 end
 
 -- 绘制卡牌
@@ -49,6 +68,16 @@ function Card:draw(cellX, cellY, cellSize)
     local cardW = cellSize - padding * 2
     local cardH = cellSize - padding * 2
 
+    -- Draw shield glow border if has shield
+    if self.shield and self.shield > 0 then
+        local time = love.timer.getTime()
+        local glowIntensity = 0.5 + 0.3 * math.sin(time * 3)
+        love.graphics.setColor(0.3, 0.6, 1, glowIntensity)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", cardX - 2, cardY - 2, cardW + 4, cardH + 4, 7, 7)
+        love.graphics.setLineWidth(1)
+    end
+
     -- 根据类型选择颜色
     if self.type == Card.TYPE.PLAYER then
         love.graphics.setColor(0.2, 0.4, 0.8)  -- 蓝色-玩家
@@ -58,6 +87,12 @@ function Card:draw(cellX, cellY, cellSize)
 
     -- 绘制卡牌背景
     love.graphics.rectangle("fill", cardX, cardY, cardW, cardH, 5, 5)
+
+    -- Flash overlay when hit
+    if self.flashTimer > 0 then
+        love.graphics.setColor(1, 1, 1, self.flashTimer / 0.15 * 0.7)
+        love.graphics.rectangle("fill", cardX, cardY, cardW, cardH, 5, 5)
+    end
 
     -- 绘制边框
     if self.type == Card.TYPE.PLAYER then
@@ -78,6 +113,14 @@ function Card:draw(cellX, cellY, cellSize)
 
     -- 绘制8方向攻击力
     self:drawAttackDirections(cardX, cardY, cardW, cardH)
+
+    -- Draw shield value if present
+    if self.shield and self.shield > 0 then
+        local font = love.graphics.getFont()
+        local shieldText = tostring(self.shield)
+        love.graphics.setColor(0.3, 0.6, 1)
+        love.graphics.print(shieldText, cardX + cardW - font:getWidth(shieldText) - 3, cardY + 3)
+    end
 end
 
 -- 绘制HP条和数值

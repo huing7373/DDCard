@@ -29,6 +29,12 @@ Skills.SKILLS = {
             local moved = false
             local range = params.range or 2
 
+            -- Record start position for visual effect
+            local startX, startY
+            if game.getScreenPos then
+                startX, startY = game.getScreenPos(user.gridX, user.gridY)
+            end
+
             for step = 1, range do
                 local newX = user.gridX + dir.dx
                 local newY = user.gridY + dir.dy
@@ -50,6 +56,19 @@ Skills.SKILLS = {
                 else
                     game.moveCard(user, newX, newY)
                     moved = true
+                end
+            end
+
+            -- Create charge trail visual effect
+            if moved and game.getScreenPos and game.createSkillEffect then
+                local endX, endY = game.getScreenPos(user.gridX, user.gridY)
+                game.createSkillEffect("charge_trail", {
+                    startX = startX, startY = startY,
+                    endX = endX, endY = endY,
+                    duration = 0.3
+                })
+                if game.triggerScreenShake then
+                    game.triggerScreenShake(5, 0.15)
                 end
             end
 
@@ -97,6 +116,20 @@ Skills.SKILLS = {
             game.createDamageText(targetCell.card, damage)
             game.createHealText(user, heal)
 
+            -- Create lifesteal visual effect
+            if game.getScreenPos and game.createSkillEffect then
+                local userX, userY = game.getScreenPos(user.gridX, user.gridY)
+                local targetScreenX, targetScreenY = game.getScreenPos(targetX, targetY)
+                game.createSkillEffect("lifesteal_line", {
+                    startX = userX, startY = userY,
+                    endX = targetScreenX, endY = targetScreenY,
+                    duration = 0.4
+                })
+                if game.triggerScreenShake then
+                    game.triggerScreenShake(3, 0.1)
+                end
+            end
+
             if targetCell.card.hp <= 0 then
                 game.removeCard(targetCell.card)
             end
@@ -121,6 +154,15 @@ Skills.SKILLS = {
             local hitAny = false
             local damageMultiplier = params.damageMultiplier or 1.0
 
+            -- Create whirlwind area effect
+            if game.getScreenPos and game.createSkillEffect then
+                local centerX, centerY = game.getScreenPos(user.gridX, user.gridY)
+                game.createSkillEffect("whirlwind_area", {
+                    centerX = centerX, centerY = centerY,
+                    duration = 0.4
+                })
+            end
+
             for dirKey, dir in pairs(DIRECTIONS) do
                 local targetX = user.gridX + dir.dx
                 local targetY = user.gridY + dir.dy
@@ -141,6 +183,11 @@ Skills.SKILLS = {
                 end
             end
 
+            -- Trigger screen shake for whirlwind
+            if hitAny and game.triggerScreenShake then
+                game.triggerScreenShake(5, 0.15)
+            end
+
             return hitAny
         end
     },
@@ -159,6 +206,16 @@ Skills.SKILLS = {
             local shieldAmount = params.amount or 5
             user.shield = (user.shield or 0) + shieldAmount
             game.createShieldText(user, shieldAmount)
+
+            -- Create shield ring visual effect
+            if game.getScreenPos and game.createSkillEffect then
+                local centerX, centerY = game.getScreenPos(user.gridX, user.gridY)
+                game.createSkillEffect("shield_ring", {
+                    centerX = centerX, centerY = centerY,
+                    duration = 0.4
+                })
+            end
+
             return true
         end
     }

@@ -53,6 +53,13 @@ local animState = {
     damageTexts = {},
     enemyActionDelay = 0,
     currentEnemyIndex = 0,
+    screenShake = {
+        intensity = 0,
+        timer = 0,
+        offsetX = 0,
+        offsetY = 0,
+    },
+    skillEffects = {},
 }
 
 -- UI Buttons
@@ -121,6 +128,13 @@ removeCard = function(card)
     if card.type == Card.TYPE.ENEMY then
         Utils.removeFromList(gameState.enemies, card)
     end
+    -- Clear UI references to removed card
+    if uiState.selectedCard == card then
+        uiState.selectedCard = nil
+    end
+    if uiState.hoveredCard == card then
+        uiState.hoveredCard = nil
+    end
     print(string.format("%s defeated!", card.name))
 end
 
@@ -183,12 +197,73 @@ loadLevel = function(levelIndex)
     print(string.format("Enter Level %d: %s", levelIndex, levelData.name))
 end
 
+-- Update screen shake
+local function updateScreenShake(dt)
+    local shake = animState.screenShake
+    if shake.timer > 0 then
+        shake.timer = shake.timer - dt
+        local progress = shake.timer / Config.EFFECTS.SHAKE_DURATION
+        local currentIntensity = shake.intensity * progress
+        shake.offsetX = (math.random() * 2 - 1) * currentIntensity
+        shake.offsetY = (math.random() * 2 - 1) * currentIntensity
+    else
+        shake.offsetX = 0
+        shake.offsetY = 0
+        shake.intensity = 0
+    end
+end
+
+-- Trigger screen shake
+local function triggerScreenShake(intensity, duration)
+    animState.screenShake.intensity = intensity or Config.EFFECTS.SHAKE_INTENSITY
+    animState.screenShake.timer = duration or Config.EFFECTS.SHAKE_DURATION
+end
+
+-- Update skill effects
+local function updateSkillEffects(dt)
+    for i = #animState.skillEffects, 1, -1 do
+        local effect = animState.skillEffects[i]
+        effect.timer = effect.timer + dt
+        if effect.timer >= effect.duration then
+            table.remove(animState.skillEffects, i)
+        end
+    end
+end
+
+-- Create skill effect
+local function createSkillEffect(effectType, params)
+    local effect = {
+        type = effectType,
+        timer = 0,
+        duration = params.duration or Config.EFFECTS.SKILL_EFFECT_DURATION,
+    }
+    for k, v in pairs(params) do
+        effect[k] = v
+    end
+    table.insert(animState.skillEffects, effect)
+end
+
+-- Update card flash timers
+local function updateCardEffects(dt)
+    for _, card in ipairs(gameState.cards) do
+        if card.update then
+            card:update(dt)
+        end
+    end
+end
+
 -- Update game logic
 function love.update(dt)
     local mx, my = love.mouse.getPosition()
-    uiState.hoveredCard = getCardAtScreen(mx, my)
+    -- Adjust for screen shake offset
+    local adjustedMx = mx - animState.screenShake.offsetX
+    local adjustedMy = my - animState.screenShake.offsetY
+    uiState.hoveredCard = getCardAtScreen(adjustedMx, adjustedMy)
 
     updateDamageTexts(dt)
+    updateScreenShake(dt)
+    updateSkillEffects(dt)
+    updateCardEffects(dt)
 
     if gameState.state == GAME_STATE.ENEMY_TURN then
         updateEnemyTurn(dt)
@@ -197,31 +272,99 @@ function love.update(dt)
     checkGameEnd()
 end
 
+-- Draw skill effects
+local function drawSkillEffects()
+    for _, effect in ipairs(animState.skillEffects) do
+        local progress = effect.timer / effect.duration
+        local alpha = 1 - progress
+
+        if effect.type == "charge_trail" then
+            -- Draw yellow line from start to end
+            love.graphics.setColor(1, 0.9, 0.3, alpha * 0.8)
+            love.graphics.setLineWidth(3)
+            love.graphics.line(effect.startX, effect.startY, effect.endX, effect.endY)
+            love.graphics.setLineWidth(1)
+
+        elseif effect.type == "whirlwind_area" then
+            -- Draw red highlight on 8 surrounding cells
+            local cellSize = CELL_SIZE
+            for _, dir in pairs(DIRECTIONS) do
+                local cellX = effect.centerX + dir.dx * cellSize
+                local cellY = effect.centerY + dir.dy * cellSize
+                love.graphics.setColor(1, 0.3, 0.3, alpha * 0.5)
+                love.graphics.rectangle("fill", cellX - cellSize/2, cellY - cellSize/2, cellSize, cellSize)
+            end
+
+        elseif effect.type == "lifesteal_line" then
+            -- Draw red damage line then green heal line
+            local midProgress = progress * 2
+            if midProgress < 1 then
+                -- Damage line
+                love.graphics.setColor(1, 0.3, 0.3, alpha)
+                love.graphics.setLineWidth(2)
+                love.graphics.line(effect.startX, effect.startY, effect.endX, effect.endY)
+            else
+                -- Heal line (reverse direction)
+                love.graphics.setColor(0.3, 1, 0.3, alpha)
+                love.graphics.setLineWidth(2)
+                love.graphics.line(effect.endX, effect.endY, effect.startX, effect.startY)
+            end
+            love.graphics.setLineWidth(1)
+
+        elseif effect.type == "shield_ring" then
+            -- Draw expanding blue ring
+            local radius = 20 + progress * 30
+            love.graphics.setColor(0.3, 0.6, 1, alpha * 0.6)
+            love.graphics.setLineWidth(2)
+            love.graphics.circle("line", effect.centerX, effect.centerY, radius)
+            love.graphics.setLineWidth(1)
+        end
+    end
+end
+
 -- Draw game
 function love.draw()
     love.graphics.setBackgroundColor(0.1, 0.1, 0.15)
+
+    -- Apply screen shake offset
+    local shakeX = animState.screenShake.offsetX
+    local shakeY = animState.screenShake.offsetY
+    love.graphics.push()
+    love.graphics.translate(shakeX, shakeY)
 
     -- Title
     love.graphics.setColor(1, 0.8, 0.2)
     love.graphics.print("Demon Lord", 10, 10)
 
     drawGrid()
+    drawSkillEffects()
     drawCardDetailPanel()
     drawDamageTexts()
     drawTurnInfo()
     drawButtons()
     drawSkillBar()
 
+    love.graphics.pop()  -- End screen shake transform
+
     if gameState.state == GAME_STATE.GAME_OVER or gameState.state == GAME_STATE.VICTORY then
+        love.graphics.push()
+        love.graphics.translate(-shakeX, -shakeY)  -- Remove shake for UI overlays
         drawGameEndScreen()
+        love.graphics.pop()
     end
 
     if uiState.showLevelSelect then
+        love.graphics.push()
+        love.graphics.translate(-shakeX, -shakeY)
         drawLevelSelect()
+        love.graphics.pop()
     end
 
     if uiState.showUpgradeMenu then
+        love.graphics.push()
+        love.graphics.translate(-shakeX, -shakeY)
         drawUpgradeMenu()
+        love.graphics.pop()
     end
 
     drawProgressionInfo()
@@ -257,13 +400,20 @@ function drawGrid()
             end
             love.graphics.rectangle("fill", cellX, cellY, CELL_SIZE, CELL_SIZE)
 
-            -- Check targeting
-            local isMoveTarget = Utils.isInTargetList(x, y, uiState.moveTargets)
-            local isAttackTarget = Utils.isInTargetList(x, y, uiState.attackTargets)
+            -- Check targeting (get target info for attackPower)
+            local isMoveTarget, moveTarget = Utils.isInTargetList(x, y, uiState.moveTargets)
+            local isAttackTarget, attackTarget = Utils.isInTargetList(x, y, uiState.attackTargets)
 
             -- Highlight targets
             if isMoveTarget then
-                love.graphics.setColor(Config.COLORS.MOVE_TARGET)
+                local hasAttackPower = moveTarget and moveTarget.attackPower and moveTarget.attackPower > 0
+                if hasAttackPower then
+                    -- Bright green for directions with attack power
+                    love.graphics.setColor(Config.COLORS.MOVE_TARGET)
+                else
+                    -- Dim color for move-only directions (no attack power)
+                    love.graphics.setColor(0.15, 0.35, 0.15, 0.5)
+                end
                 love.graphics.rectangle("fill", cellX, cellY, CELL_SIZE, CELL_SIZE)
             end
             if isAttackTarget then
@@ -275,7 +425,12 @@ function drawGrid()
             if isAttackTarget then
                 love.graphics.setColor(Config.COLORS.ATTACK_BORDER)
             elseif isMoveTarget then
-                love.graphics.setColor(Config.COLORS.MOVE_BORDER)
+                local hasAttackPower = moveTarget and moveTarget.attackPower and moveTarget.attackPower > 0
+                if hasAttackPower then
+                    love.graphics.setColor(Config.COLORS.MOVE_BORDER)
+                else
+                    love.graphics.setColor(0.3, 0.5, 0.3)  -- Dimmer border for move-only
+                end
             else
                 love.graphics.setColor(Config.COLORS.GRID_BORDER)
             end
@@ -286,8 +441,22 @@ function drawGrid()
             if cell.card then
                 cell.card:draw(cellX, cellY, CELL_SIZE)
             else
-                love.graphics.setColor(0.5, 0.5, 0.5)
-                love.graphics.print(string.format("%d,%d", x, y), cellX + 5, cellY + 5)
+                -- Show attack power indicator on move targets
+                if isMoveTarget and moveTarget and moveTarget.attackPower and moveTarget.attackPower > 0 then
+                    love.graphics.setColor(1, 0.9, 0.3)  -- Gold color for attack power
+                    local atkText = tostring(moveTarget.attackPower)
+                    local font = love.graphics.getFont()
+                    local textW = font:getWidth(atkText)
+                    local textH = font:getHeight()
+                    love.graphics.print(atkText, cellX + CELL_SIZE/2 - textW/2, cellY + CELL_SIZE/2 - textH/2)
+                elseif isMoveTarget then
+                    -- Show arrow or dot for move-only
+                    love.graphics.setColor(0.4, 0.6, 0.4)
+                    love.graphics.circle("fill", cellX + CELL_SIZE/2, cellY + CELL_SIZE/2, 5)
+                else
+                    love.graphics.setColor(0.5, 0.5, 0.5)
+                    love.graphics.print(string.format("%d,%d", x, y), cellX + 5, cellY + 5)
+                end
             end
         end
     end
@@ -370,15 +539,28 @@ function useSelectedSkill(direction)
         createDamageText = function(target, damage)
             local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
             createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
+            -- Trigger flash on damaged target
+            if target.triggerFlash then
+                target:triggerFlash(Config.EFFECTS.FLASH_DURATION)
+            end
         end,
         createHealText = function(target, heal)
             local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL)
+            createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL, false)
         end,
         createShieldText = function(target, amount)
             local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-            createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD)
-        end
+            createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD, false)
+        end,
+        triggerScreenShake = function(intensity, duration)
+            triggerScreenShake(intensity or Config.EFFECTS.SKILL_SHAKE_INTENSITY, duration or Config.EFFECTS.SHAKE_DURATION)
+        end,
+        createSkillEffect = function(effectType, params)
+            createSkillEffect(effectType, params)
+        end,
+        getScreenPos = function(gridX, gridY)
+            return Utils.getGridCellCenter(gridX, gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+        end,
     }
 
     local success, msg = Skills.useSkill(uiState.selectedSkillIndex, direction, gameContext)
@@ -401,20 +583,24 @@ function love.mousepressed(x, y, button)
         return
     end
 
+    -- Adjust for screen shake offset
+    local adjustedX = x - animState.screenShake.offsetX
+    local adjustedY = y - animState.screenShake.offsetY
+
     -- Level select
     if uiState.showLevelSelect and button == 1 then
-        handleLevelSelectClick(x, y)
+        handleLevelSelectClick(adjustedX, adjustedY)
         return
     end
 
     -- Upgrade menu
     if uiState.showUpgradeMenu and button == 1 then
-        handleUpgradeMenuClick(x, y)
+        handleUpgradeMenuClick(adjustedX, adjustedY)
         return
     end
 
     -- UI buttons
-    if button == 1 and UI.handleButtonClick(buttons, x, y) then
+    if button == 1 and UI.handleButtonClick(buttons, adjustedX, adjustedY) then
         return
     end
 
@@ -423,11 +609,22 @@ function love.mousepressed(x, y, button)
     end
 
     if button == 1 then
-        local clickedCard = getCardAtScreen(x, y)
-        local gridPos = getGridAtScreen(x, y)
+        local clickedCard = getCardAtScreen(adjustedX, adjustedY)
+        local gridPos = getGridAtScreen(adjustedX, adjustedY)
+
+        print(string.format("[DEBUG] Click: raw=(%d,%d) adjusted=(%d,%d) gridPos=%s isMoving=%s",
+            x, y, adjustedX, adjustedY,
+            gridPos and string.format("(%d,%d)", gridPos.x, gridPos.y) or "nil",
+            tostring(uiState.isMoving)))
 
         if uiState.isMoving and gridPos then
+            print(string.format("[DEBUG] Attempting attack/move at grid (%d,%d)", gridPos.x, gridPos.y))
+            print(string.format("[DEBUG] attackTargets count: %d", #uiState.attackTargets))
+            for i, t in ipairs(uiState.attackTargets) do
+                print(string.format("[DEBUG]   target %d: pos=(%d,%d) dir=%s", i, t.x, t.y, t.direction))
+            end
             local attackResult = tryAttackAt(gameState.player, gridPos.x, gridPos.y)
+            print(string.format("[DEBUG] attackResult: %s", tostring(attackResult)))
             if not attackResult then
                 tryMoveCard(gameState.player, gridPos.x, gridPos.y)
             end
@@ -440,6 +637,8 @@ function love.mousepressed(x, y, button)
         uiState.isMoving = false
         uiState.moveTargets = {}
         uiState.attackTargets = {}
+        uiState.selectedCard = nil
+        uiState.selectedSkillIndex = nil
     end
 end
 
@@ -501,6 +700,12 @@ enterMoveMode = function(card)
     uiState.isMoving = true
     uiState.selectedCard = card
     uiState.moveTargets, uiState.attackTargets = Grid.findTargets(gameState.grid, card, DIRECTIONS, GRID_SIZE)
+    print(string.format("[DEBUG] enterMoveMode: card at (%d,%d)", card.gridX, card.gridY))
+    print(string.format("[DEBUG]   moveTargets: %d, attackTargets: %d", #uiState.moveTargets, #uiState.attackTargets))
+    for i, t in ipairs(uiState.attackTargets) do
+        print(string.format("[DEBUG]   attackTarget %d: pos=(%d,%d) dir=%s target=%s",
+            i, t.x, t.y, t.direction, t.target and t.target.name or "nil"))
+    end
 end
 
 -- Try to move card
@@ -538,8 +743,13 @@ end
 
 -- Try attack at position
 function tryAttackAt(attacker, targetX, targetY)
-    for _, target in ipairs(uiState.attackTargets) do
+    print(string.format("[DEBUG] tryAttackAt: looking for (%d,%d)", targetX, targetY))
+    for i, target in ipairs(uiState.attackTargets) do
+        print(string.format("[DEBUG]   comparing with target %d: (%d,%d) match=%s",
+            i, target.x, target.y,
+            tostring(target.x == targetX and target.y == targetY)))
         if target.x == targetX and target.y == targetY then
+            print("[DEBUG]   MATCH FOUND! Performing attack...")
             performAttack(attacker, target.target, target.direction)
             uiState.isMoving = false
             uiState.moveTargets = {}
@@ -550,6 +760,7 @@ function tryAttackAt(attacker, targetX, targetY)
             return true
         end
     end
+    print("[DEBUG]   No match found")
     return false
 end
 
@@ -564,9 +775,19 @@ performAttack = function(attacker, defender, direction)
 
     if attackerDamage > 0 then
         createDamageText(defenderScreenX, defenderScreenY, attackerDamage, Config.COLORS.DAMAGE)
+        -- Trigger defender flash
+        if defender.triggerFlash then
+            defender:triggerFlash(Config.EFFECTS.FLASH_DURATION)
+        end
+        -- Trigger screen shake
+        triggerScreenShake(Config.EFFECTS.SHAKE_INTENSITY, Config.EFFECTS.SHAKE_DURATION)
     end
     if defenderDamage > 0 then
         createDamageText(attackerScreenX, attackerScreenY, defenderDamage, Config.COLORS.COUNTER_DAMAGE)
+        -- Trigger attacker flash from counter attack
+        if attacker.triggerFlash then
+            attacker:triggerFlash(Config.EFFECTS.FLASH_DURATION)
+        end
     end
 
     -- Handle deaths and rewards
@@ -680,15 +901,28 @@ function performEnemyAction(enemy)
             createDamageText = function(target, damage)
                 local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
                 createDamageText(screenX, screenY, damage, Config.COLORS.DAMAGE)
+                -- Trigger flash on damaged target
+                if target.triggerFlash then
+                    target:triggerFlash(Config.EFFECTS.FLASH_DURATION)
+                end
             end,
             createHealText = function(target, heal)
                 local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-                createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL)
+                createDamageText(screenX, screenY - 20, "+" .. heal, Config.COLORS.HEAL, false)
             end,
             createShieldText = function(target, amount)
                 local screenX, screenY = Utils.getGridCellCenter(target.gridX, target.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-                createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD)
-            end
+                createDamageText(screenX, screenY - 20, "+" .. amount .. " Shield", Config.COLORS.SHIELD, false)
+            end,
+            triggerScreenShake = function(intensity, duration)
+                triggerScreenShake(intensity or Config.EFFECTS.SKILL_SHAKE_INTENSITY, duration or Config.EFFECTS.SHAKE_DURATION)
+            end,
+            createSkillEffect = function(effectType, params)
+                createSkillEffect(effectType, params)
+            end,
+            getScreenPos = function(gridX, gridY)
+                return Utils.getGridCellCenter(gridX, gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
+            end,
         }
 
         local success = skill.execute(enemy, direction, skillContext, skill.params or {})
@@ -819,12 +1053,18 @@ function hardReset()
 end
 
 -- Create damage text animation
-createDamageText = function(x, y, damage, color)
+createDamageText = function(x, y, damage, color, useScale)
     local text
     if type(damage) == "string" then
         text = damage
     else
         text = "-" .. damage
+    end
+
+    -- Default to using scale for damage numbers (not heal/shield text)
+    local shouldScale = useScale
+    if shouldScale == nil then
+        shouldScale = type(damage) == "number"
     end
 
     table.insert(animState.damageTexts, {
@@ -834,7 +1074,8 @@ createDamageText = function(x, y, damage, color)
         color = color,
         alpha = 1,
         timer = 0,
-        duration = Config.TIMING.DAMAGE_TEXT_DURATION
+        duration = Config.TIMING.DAMAGE_TEXT_DURATION,
+        useScale = shouldScale,
     })
 end
 
@@ -858,13 +1099,31 @@ function drawDamageTexts()
         love.graphics.setColor(dmg.color[1], dmg.color[2], dmg.color[3], dmg.alpha)
         local font = love.graphics.getFont()
         local textW = font:getWidth(dmg.text)
-        love.graphics.print(dmg.text, dmg.x - textW / 2, dmg.y)
+        local textH = font:getHeight()
+
+        -- Apply scale effect for damage numbers
+        if dmg.useScale then
+            local scale = 1 + dmg.alpha * (Config.EFFECTS.DAMAGE_SCALE_START - 1)
+            local scaledW = textW * scale
+            local scaledH = textH * scale
+            love.graphics.push()
+            love.graphics.translate(dmg.x, dmg.y)
+            love.graphics.scale(scale, scale)
+            love.graphics.print(dmg.text, -textW / 2, -textH / 2)
+            love.graphics.pop()
+        else
+            love.graphics.print(dmg.text, dmg.x - textW / 2, dmg.y)
+        end
     end
 end
 
 -- Draw card detail panel
 function drawCardDetailPanel()
-    local card = uiState.hoveredCard or uiState.selectedCard
+    -- Don't show panel when in move/attack mode to avoid blocking clicks
+    if uiState.isMoving then return end
+
+    -- Show panel only when hovering over a card
+    local card = uiState.hoveredCard
     if not card then return end
 
     local panelX, panelY = 10, 100

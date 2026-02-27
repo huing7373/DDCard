@@ -124,4 +124,15 @@ Config.GAME_STATE = {
     VICTORY = "victory"
 }
 
+-- Visual effects configuration
+Config.EFFECTS = {
+    FLASH_DURATION = 0.15,          -- Flash duration when hit (seconds)
+    SHAKE_INTENSITY = 3,            -- Normal attack screen shake (pixels)
+    SKILL_SHAKE_INTENSITY = 5,      -- Skill screen shake (pixels)
+    SHAKE_DURATION = 0.1,           -- Screen shake duration (seconds)
+    DAMAGE_SCALE_START = 1.5,       -- Initial damage number scale
+    SKILL_EFFECT_DURATION = 0.3,    -- Skill visual effect duration
+    SHIELD_GLOW_SPEED = 3,          -- Shield glow pulse speed
+}
+
 return Config

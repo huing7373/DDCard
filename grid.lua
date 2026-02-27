@@ -97,6 +97,7 @@ end
 
 -- Find valid moves for a card in all directions
 -- Returns two lists: moveTargets (empty cells) and attackTargets (enemy cells)
+-- moveTargets includes attackPower for visual differentiation
 function Grid.findTargets(grid, card, directions, gridSize)
     local moveTargets = {}
     local attackTargets = {}
@@ -104,25 +105,30 @@ function Grid.findTargets(grid, card, directions, gridSize)
     for dirKey, dir in pairs(directions) do
         local newX = card.gridX + dir.dx
         local newY = card.gridY + dir.dy
+        local attackPower = card.attack[dirKey] or 0
 
         -- Check bounds
         if newX >= 1 and newX <= gridSize and newY >= 1 and newY <= gridSize then
             local targetCell = grid[newY][newX]
             if targetCell.card == nil then
-                -- Empty cell - can move
+                -- Empty cell - can move (include attackPower for visual)
                 table.insert(moveTargets, {
                     x = newX,
                     y = newY,
-                    direction = dirKey
+                    direction = dirKey,
+                    attackPower = attackPower
                 })
             elseif targetCell.card.type ~= card.type then
-                -- Enemy card - can attack
-                table.insert(attackTargets, {
-                    x = newX,
-                    y = newY,
-                    direction = dirKey,
-                    target = targetCell.card
-                })
+                -- Enemy card - can attack only if we have attack power
+                if attackPower > 0 then
+                    table.insert(attackTargets, {
+                        x = newX,
+                        y = newY,
+                        direction = dirKey,
+                        target = targetCell.card,
+                        attackPower = attackPower
+                    })
+                end
             end
         end
     end
