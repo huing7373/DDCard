@@ -40,6 +40,11 @@ function Card.new(params)
     -- 技能列表
     self.skills = params.skills
 
+    -- Movement properties
+    self.moveType = params.moveType or Config.MOVE_TYPE.EIGHT_WAY  -- 移动类型
+    self.moveRange = params.moveRange or 1                          -- 移动范围(格数)
+    self.moveMinRange = params.moveMinRange or 0                    -- 最小移动距离(跳跃类型用)
+
     -- Visual effect state
     self.flashTimer = 0  -- Flash when hit
     self.shield = params.shield or 0  -- Shield amount

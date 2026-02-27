@@ -136,6 +136,115 @@ function Grid.findTargets(grid, card, directions, gridSize)
     return moveTargets, attackTargets
 end
 
+-- Find valid moves for a card based on movement type configuration
+-- Supports: eight_way, cross, diagonal, cross_jump, diagonal_jump
+-- Returns list of move targets with x, y, direction, attackPower, and distance
+function Grid.findTargetsWithMoveType(grid, card, allDirections, gridSize, Config)
+    local moveTargets = {}
+    local attackTargets = {}
+
+    local moveType = card.moveType or Config.MOVE_TYPE.EIGHT_WAY
+    local moveRange = card.moveRange or 1
+    local moveMinRange = card.moveMinRange or 0
+
+    -- Get direction set for this move type
+    local directionKeys
+    if moveType == Config.MOVE_TYPE.EIGHT_WAY then
+        directionKeys = Config.DIRECTION_SETS.eight_way
+    elseif moveType == Config.MOVE_TYPE.CROSS or moveType == Config.MOVE_TYPE.CROSS_JUMP then
+        directionKeys = Config.DIRECTION_SETS.cross
+    elseif moveType == Config.MOVE_TYPE.DIAGONAL or moveType == Config.MOVE_TYPE.DIAGONAL_JUMP then
+        directionKeys = Config.DIRECTION_SETS.diagonal
+    else
+        directionKeys = Config.DIRECTION_SETS.eight_way
+    end
+
+    -- Check if this is a jump type (skips adjacent cells)
+    local isJumpType = (moveType == Config.MOVE_TYPE.CROSS_JUMP or moveType == Config.MOVE_TYPE.DIAGONAL_JUMP)
+
+    -- Calculate effective min range (jump types skip at least 1 cell)
+    local effectiveMinRange = moveMinRange
+    if isJumpType and effectiveMinRange < 1 then
+        effectiveMinRange = 1
+    end
+
+    -- Iterate through allowed directions
+    for _, dirKey in ipairs(directionKeys) do
+        local dir = allDirections[dirKey]
+        if dir then
+            -- Check each distance from min to max range
+            for dist = 1, moveRange do
+                local newX = card.gridX + dir.dx * dist
+                local newY = card.gridY + dir.dy * dist
+                local attackPower = card.attack[dirKey] or 0
+
+                -- Check bounds
+                if newX >= 1 and newX <= gridSize and newY >= 1 and newY <= gridSize then
+                    local targetCell = grid[newY][newX]
+
+                    -- Check if path is blocked (for non-jump types, need clear path)
+                    local pathBlocked = false
+                    if not isJumpType and dist > 1 then
+                        for checkDist = 1, dist - 1 do
+                            local checkX = card.gridX + dir.dx * checkDist
+                            local checkY = card.gridY + dir.dy * checkDist
+                            if checkX >= 1 and checkX <= gridSize and checkY >= 1 and checkY <= gridSize then
+                                local checkCell = grid[checkY][checkX]
+                                if checkCell.card ~= nil then
+                                    pathBlocked = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+
+                    if not pathBlocked then
+                        -- Check if distance is within allowed range (considering min range for jumps)
+                        local withinRange = dist >= (effectiveMinRange + 1) or (not isJumpType and dist >= 1)
+
+                        if isJumpType then
+                            -- For jump types, only allow tiles beyond the adjacent one
+                            withinRange = dist > 1
+                        end
+
+                        if withinRange then
+                            if targetCell.card == nil then
+                                -- Empty cell - can move
+                                table.insert(moveTargets, {
+                                    x = newX,
+                                    y = newY,
+                                    direction = dirKey,
+                                    attackPower = attackPower,
+                                    distance = dist
+                                })
+                            elseif targetCell.card.type ~= card.type then
+                                -- Enemy card - can attack only if we have attack power
+                                if attackPower > 0 then
+                                    table.insert(attackTargets, {
+                                        x = newX,
+                                        y = newY,
+                                        direction = dirKey,
+                                        target = targetCell.card,
+                                        attackPower = attackPower,
+                                        distance = dist
+                                    })
+                                end
+                            end
+                        end
+                    end
+
+                    -- For non-jump types, stop at first obstacle
+                    if not isJumpType and targetCell.card ~= nil then
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    return moveTargets, attackTargets
+end
+
 -- Check if position is valid and within bounds
 function Grid.isValidPosition(x, y, gridSize)
     return x >= 1 and x <= gridSize and y >= 1 and y <= gridSize

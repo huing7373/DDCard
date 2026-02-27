@@ -2,6 +2,7 @@
 -- Define level data and enemy templates
 
 local Skills = require("skills")
+local Config = require("config")
 
 local Levels = {}
 
@@ -11,6 +12,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "rab",
         hp = 6,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 },
+        moveType = "eight_way",  -- 八向移动
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -19,6 +22,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "L_Hand",
         hp = 4,
         attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
+        moveType = "cross",  -- 十字移动
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -27,6 +32,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "R_Hand",
         hp = 4,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
+        moveType = "cross",  -- 十字移动
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -35,6 +42,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "pig",
         hp = 8,
         attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 },
+        moveType = "diagonal",  -- 斜向移动
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -43,6 +52,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "PX",
         hp = 5,
         attack = { n = 1, ne = 0, e = 3, se = 0, s = 1, sw = 0, w = 0, nw = 0 },
+        moveType = "cross",  -- 十字移动
+        moveRange = 2,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -51,6 +62,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "TH",
         hp = 6,
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
+        moveType = "diagonal_jump",  -- 斜向跳跃
+        moveRange = 2,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
@@ -59,6 +72,8 @@ Levels.ENEMY_TEMPLATES = {
         name = "God",
         hp = 13,
         attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
+        moveType = "cross_jump",  -- 十字跳跃
+        moveRange = 2,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.5 } },
             { id = "shield", params = { amount = 8 } }
@@ -211,7 +226,11 @@ function Levels.createEnemyFromTemplate(templateName, x, y)
         },
         gridX = x,
         gridY = y,
-        skills = enemySkills
+        skills = enemySkills,
+        -- Movement properties
+        moveType = template.moveType or Config.MOVE_TYPE.EIGHT_WAY,
+        moveRange = template.moveRange or 1,
+        moveMinRange = template.moveMinRange or 0
     }
 end
 

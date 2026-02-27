@@ -26,6 +26,22 @@ Config.DIRECTIONS = {
 -- Direction key list for iteration
 Config.DIRECTION_KEYS = {"n", "ne", "e", "se", "s", "sw", "w", "nw"}
 
+-- Movement type enumeration
+Config.MOVE_TYPE = {
+    EIGHT_WAY = "eight_way",         -- 八向移动 (默认)
+    CROSS = "cross",                  -- 十字移动
+    DIAGONAL = "diagonal",            -- 斜向移动
+    CROSS_JUMP = "cross_jump",        -- 十字跳跃
+    DIAGONAL_JUMP = "diagonal_jump"   -- 斜向跳跃
+}
+
+-- Direction sets for each movement type
+Config.DIRECTION_SETS = {
+    eight_way = {"n", "ne", "e", "se", "s", "sw", "w", "nw"},
+    cross = {"n", "e", "s", "w"},
+    diagonal = {"ne", "se", "sw", "nw"}
+}
+
 -- Timing configuration
 Config.TIMING = {
     ENEMY_ACTION_DELAY = 0.5,
@@ -153,6 +169,23 @@ Config.EFFECTS = {
 Config.AI = {
     SHIELD_HP_THRESHOLD = 0.3,      -- Use shield when HP below 30%
     LIFESTEAL_HP_THRESHOLD = 0.5,   -- Use lifesteal when HP below 50%
+    APPROACH_DISTANCE_WEIGHT = 10,  -- Weight for distance in approach scoring
+    APPROACH_SAFETY_BONUS = 5,      -- Bonus for approaching from safe direction
+    ESCAPE_DISTANCE_WEIGHT = 10,    -- Weight for distance in escape scoring
+    ESCAPE_SAFETY_BONUS = 20,       -- Bonus for escaping to safe direction
+}
+
+-- AI State Machine states
+Config.AI_STATE = {
+    IDLE = "idle",
+    EVALUATE_SKILL = "evaluate_skill",
+    EVALUATE_ATTACK = "evaluate_attack",
+    EVALUATE_SURVIVAL = "evaluate_survival",
+    EXECUTE_SKILL = "execute_skill",
+    EXECUTE_ATTACK = "execute_attack",
+    EXECUTE_ESCAPE = "execute_escape",
+    EXECUTE_APPROACH = "execute_approach",
+    WAIT = "wait"
 }
 
 -- Level completion rewards (direction attack bonuses)
