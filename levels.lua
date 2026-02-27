@@ -10,27 +10,42 @@ Levels.ENEMY_TEMPLATES = {
     rab = {
         name = "rab",
         hp = 6,
-        attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 }
+        attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 },
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     L_Hand = {
         name = "L_Hand",
         hp = 4,
-        attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 }
+        attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     R_Hand = {
         name = "R_Hand",
         hp = 4,
-        attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 }
+        attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     PX = {
         name = "pig",
         hp = 8,
-        attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 }
+        attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 },
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     pig = {
         name = "PX",
         hp = 5,
-        attack = { n = 1, ne = 0, e = 3, se = 0, s = 1, sw = 0, w = 0, nw = 0 }
+        attack = { n = 1, ne = 0, e = 3, se = 0, s = 1, sw = 0, w = 0, nw = 0 },
+        skills = {
+            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
+        }
     },
     TH = {
         name = "TH",
