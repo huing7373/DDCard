@@ -155,4 +155,16 @@ Config.AI = {
     LIFESTEAL_HP_THRESHOLD = 0.5,   -- Use lifesteal when HP below 50%
 }
 
+-- Level completion rewards (direction attack bonuses)
+Config.LEVEL_REWARDS = {
+    { id = "atk_n",  name = "上方攻击强化", dir = "n",  bonus = 1 },
+    { id = "atk_nw", name = "左上攻击强化", dir = "nw", bonus = 2 },
+    { id = "atk_ne", name = "右上攻击强化", dir = "ne", bonus = 2 },
+    { id = "atk_w",  name = "左侧攻击强化", dir = "w",  bonus = 3 },
+    { id = "atk_e",  name = "右侧攻击强化", dir = "e",  bonus = 3 },
+    { id = "atk_sw", name = "左下攻击强化", dir = "sw", bonus = 2 },
+    { id = "atk_se", name = "右下攻击强化", dir = "se", bonus = 2 },
+    { id = "atk_s",  name = "下方攻击强化", dir = "s",  bonus = 4 },
+}
+
 return Config

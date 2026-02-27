@@ -46,6 +46,8 @@ local uiState = {
     showUpgradeMenu = false,
     showSettlement = false,
     selectedSkillIndex = nil,
+    showRewardSelect = false,   -- Whether to show reward selection UI
+    rewardOptions = {},         -- Current three reward options
 }
 
 -- Animation state
@@ -403,6 +405,13 @@ function love.draw()
         love.graphics.pop()
     end
 
+    if uiState.showRewardSelect then
+        love.graphics.push()
+        love.graphics.translate(-shakeX, -shakeY)
+        drawRewardSelect()
+        love.graphics.pop()
+    end
+
     drawProgressionInfo()
 
     -- Help text
@@ -587,6 +596,12 @@ function love.mousepressed(x, y, button)
     -- Adjust for screen shake offset
     local adjustedX = x - animState.screenShake.offsetX
     local adjustedY = y - animState.screenShake.offsetY
+
+    -- Reward selection
+    if uiState.showRewardSelect and button == 1 then
+        handleRewardSelectClick(adjustedX, adjustedY)
+        return
+    end
 
     -- Level select
     if uiState.showLevelSelect and button == 1 then
@@ -806,7 +821,7 @@ grantKillReward = function(killer, victim)
 
         local soulReward = Combat.calculateSoulReward(victim)
         Progression.addSoulFragments(soulReward)
-        Progression.addExp(victim.maxHp)
+        -- Removed: Progression.addExp(victim.maxHp) - EXP is no longer granted on kill
 
         createDamageText(killerScreenX + 30, killerScreenY - 30, "+" .. soulReward .. " Soul", Config.COLORS.SOUL)
 
@@ -819,6 +834,8 @@ grantKillReward = function(killer, victim)
 
         print(string.format("Kill reward: +%d HP, %s atk+%d, soul+%d",
             hpRecover, randomDir, atkBonus, soulReward))
+
+        -- Note: Experience is no longer granted on kill, rewards are given at level end
     end
 end
 
@@ -912,9 +929,43 @@ startPlayerTurn = function()
     print(string.format("Turn %d - Player turn start", gameState.turnNumber))
 end
 
+-- Generate 3 random non-duplicate reward options from the skill pool
+local function generateRewardOptions()
+    local pool = Utils.deepCopy(Config.LEVEL_REWARDS)
+    local options = {}
+    for i = 1, 3 do
+        if #pool == 0 then break end
+        local idx = math.random(#pool)
+        table.insert(options, pool[idx])
+        table.remove(pool, idx)
+    end
+    return options
+end
+
+-- Apply selected reward and continue to next level
+local function applyRewardAndContinue(reward)
+    gameState.player.attack[reward.dir] = gameState.player.attack[reward.dir] + reward.bonus
+    uiState.showRewardSelect = false
+    uiState.rewardOptions = {}
+
+    print(string.format("Reward applied: %s +%d", reward.dir, reward.bonus))
+
+    -- Original level transition logic
+    local levelData = Levels.getLevel(gameState.currentLevel)
+    if levelData and #levelData.branches > 0 then
+        uiState.showLevelSelect = true
+    elseif gameState.currentLevel >= Levels.getLevelCount() then
+        gameState.state = GAME_STATE.VICTORY
+        gameState.runResult = Roguelike.endRun(true, gameState.currentLevel)
+        uiState.showSettlement = true
+    else
+        loadLevel(gameState.currentLevel + 1)
+    end
+end
+
 -- Check game end
 checkGameEnd = function()
-    if gameState.state == GAME_STATE.GAME_OVER or gameState.state == GAME_STATE.VICTORY or uiState.showLevelSelect or uiState.showSettlement then
+    if gameState.state == GAME_STATE.GAME_OVER or gameState.state == GAME_STATE.VICTORY or uiState.showLevelSelect or uiState.showSettlement or uiState.showRewardSelect then
         return
     end
 
@@ -924,18 +975,10 @@ checkGameEnd = function()
         uiState.showSettlement = true
         print("Game Over - Player defeated")
     elseif #gameState.enemies == 0 then
-        local levelData = Levels.getLevel(gameState.currentLevel)
-        if levelData and #levelData.branches > 0 then
-            uiState.showLevelSelect = true
-            print("Level complete! Select next level...")
-        elseif gameState.currentLevel >= Levels.getLevelCount() then
-            gameState.state = GAME_STATE.VICTORY
-            gameState.runResult = Roguelike.endRun(true, gameState.currentLevel)
-            uiState.showSettlement = true
-            print("Victory! Game cleared!")
-        else
-            loadLevel(gameState.currentLevel + 1)
-        end
+        -- Show reward selection UI instead of immediately proceeding
+        uiState.rewardOptions = generateRewardOptions()
+        uiState.showRewardSelect = true
+        print("Level complete! Choose your reward...")
     end
 end
 
@@ -951,6 +994,8 @@ restartGame = function()
     gameState.currentLevel = 1
     uiState.showLevelSelect = false
     uiState.showUpgradeMenu = false
+    uiState.showRewardSelect = false
+    uiState.rewardOptions = {}
     uiState.selectedSkillIndex = nil
     uiState.isMoving = false
     uiState.moveTargets = {}
@@ -1206,6 +1251,52 @@ function drawLevelSelect()
                 hover = {0.4, 0.3, 0.5},
                 border = {0.6, 0.4, 0.8}
             })
+        end
+    end
+end
+
+-- Draw reward selection UI
+function drawRewardSelect()
+    UI.drawOverlay(0.8)
+
+    love.graphics.setColor(1, 0.9, 0.3)
+    UI.drawCenteredText("Level Complete! Choose Reward", 0, 100, 800)
+
+    local startY = 200
+    local mx, my = love.mouse.getPosition()
+
+    for i, reward in ipairs(uiState.rewardOptions) do
+        local btnX, btnY = 200, startY + (i - 1) * 80
+        local btnW, btnH = 400, 60
+        local hovered = Utils.isPointInRect(mx, my, btnX, btnY, btnW, btnH)
+
+        -- Draw button background
+        love.graphics.setColor(hovered and 0.3 or 0.2, hovered and 0.35 or 0.25, hovered and 0.4 or 0.3)
+        love.graphics.rectangle("fill", btnX, btnY, btnW, btnH, 5, 5)
+
+        -- Draw border
+        love.graphics.setColor(0.6, 0.5, 0.8)
+        love.graphics.rectangle("line", btnX, btnY, btnW, btnH, 5, 5)
+
+        -- Draw text
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(reward.name, btnX + 20, btnY + 10)
+
+        love.graphics.setColor(1, 0.9, 0.3)
+        love.graphics.print(string.format("%s +%d", string.upper(reward.dir), reward.bonus), btnX + 20, btnY + 35)
+    end
+end
+
+-- Handle reward selection click
+function handleRewardSelectClick(x, y)
+    local startY = 200
+    for i, reward in ipairs(uiState.rewardOptions) do
+        local btnX, btnY = 200, startY + (i - 1) * 80
+        local btnW, btnH = 400, 60
+
+        if Utils.isPointInRect(x, y, btnX, btnY, btnW, btnH) then
+            applyRewardAndContinue(reward)
+            return
         end
     end
 end
