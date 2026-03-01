@@ -1,6 +1,12 @@
 -- 魔王 - 主入口
 -- Love2D 游戏框架
 
+-- 加载新架构模块 (阶段 1)
+require("globals")
+local Object = require("engine.object")
+local Moveable = require("engine.moveable")
+local EventModule = require("engine.event")
+
 -- 加载模块
 local Config = require("config")
 local Utils = require("utils")
@@ -78,7 +84,7 @@ local createSkillContext
 -- 初始化游戏
 function love.load()
     -- 加载支持中文的字体（微软雅黑）
-    local fontPath = "msyh.ttc"
+    local fontPath = "resources/fonts/msyh.ttc"
     local success, font = pcall(love.graphics.newFont, fontPath, 14)
     if success then
         love.graphics.setFont(font)
