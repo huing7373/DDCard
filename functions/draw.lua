@@ -402,10 +402,13 @@ function Draw.skillEffects(skillEffects)
 
         if effect.type == "charge_trail" then
             -- 从起点到终点绘制黄色线条
-            love.graphics.setColor(1, 0.9, 0.3, alpha * 0.8)
-            love.graphics.setLineWidth(3)
-            love.graphics.line(effect.startX, effect.startY, effect.endX, effect.endY)
-            love.graphics.setLineWidth(1)
+            local data = effect.data or {}
+            if data.startX and data.startY and data.endX and data.endY then
+                love.graphics.setColor(1, 0.9, 0.3, alpha * 0.8)
+                love.graphics.setLineWidth(3)
+                love.graphics.line(data.startX, data.startY, data.endX, data.endY)
+                love.graphics.setLineWidth(1)
+            end
 
         elseif effect.type == "whirlwind_area" then
             -- 在周围8格绘制红色高亮

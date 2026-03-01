@@ -548,10 +548,14 @@ end
 function Game:useSelectedSkill(direction)
     if not self.uiState.selectedSkillIndex then return end
 
+    print(string.format("[Skill] Using skill %d in direction %s", self.uiState.selectedSkillIndex, direction))
+
     local gameContext = self:createSkillContext()
     local success, msg = self.modules.Skills.useSkill(
         self.uiState.selectedSkillIndex, direction, gameContext
     )
+
+    print(string.format("[Skill] Result: success=%s, msg=%s", tostring(success), tostring(msg)))
 
     self.uiState.selectedSkillIndex = nil
     self:exitMoveMode()
@@ -762,11 +766,21 @@ function Game:keypressed(key)
     elseif key == "1" or key == "2" or key == "3" or key == "4" then
         local skillIndex = tonumber(key)
         local skills = Skills.getPlayerSkills()
-        if skills[skillIndex] and skills[skillIndex].currentCooldown == 0 then
-            self.uiState.selectedSkillIndex = skillIndex
-            self:enterMoveMode(self.gameState.player)
+        print(string.format("[Skill] Key %s pressed, skillIndex=%d, skills count=%d", key, skillIndex, #skills))
+        if skills[skillIndex] then
+            print(string.format("[Skill] Skill found: %s, cooldown=%d", skills[skillIndex].name, skills[skillIndex].currentCooldown))
+            if skills[skillIndex].currentCooldown == 0 then
+                self.uiState.selectedSkillIndex = skillIndex
+                self:enterMoveMode(self.gameState.player)
+                print("[Skill] Entered move mode for skill")
+            else
+                print("[Skill] Skill on cooldown")
+            end
+        else
+            print("[Skill] No skill at index " .. skillIndex)
         end
     elseif self.uiState.isMoving then
+        print(string.format("[Input] In move mode, key=%s, selectedSkillIndex=%s", key, tostring(self.uiState.selectedSkillIndex)))
         local dirKey = nil
         if key == "up" or key == "w" then dirKey = "n"
         elseif key == "down" or key == "s" then dirKey = "s"
@@ -775,6 +789,7 @@ function Game:keypressed(key)
         end
 
         if dirKey then
+            print(string.format("[Input] Direction: %s", dirKey))
             if self.uiState.selectedSkillIndex then
                 self:useSelectedSkill(dirKey)
             else
