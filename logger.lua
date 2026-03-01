@@ -6,6 +6,7 @@ local Logger = {}
 local logFile = nil
 local originalPrint = print
 local logLevel = 1  -- 0=OFF, 1=INFO, 2=DEBUG
+local outputToConsole = false  -- 是否同时输出到控制台
 
 -- 日志级别
 Logger.LEVEL = {
@@ -14,8 +15,10 @@ Logger.LEVEL = {
     DEBUG = 2,
 }
 
-function Logger.init(level)
-    logLevel = level or Logger.LEVEL.INFO
+function Logger.init(options)
+    options = options or {}
+    logLevel = options.level or Logger.LEVEL.INFO
+    outputToConsole = options.console or false
 
     -- 打开日志文件 (覆盖模式)
     logFile = io.open("game.log", "w")
@@ -41,8 +44,10 @@ local function writeLog(prefix, ...)
 
     local line = prefix .. str
 
-    -- 输出到原始控制台
-    originalPrint(line)
+    -- 输出到原始控制台 (可选)
+    if outputToConsole then
+        originalPrint(line)
+    end
 
     -- 写入文件
     if logFile then
