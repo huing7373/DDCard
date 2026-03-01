@@ -5,221 +5,8 @@ local Config = require("config")
 
 local Skills = {}
 
--- Skill definitions
-Skills.SKILLS = {
-    -- 1. Charge - Move 2 tiles and attack
-    {
-        id = "charge",
-        name = "Charge",
-        description = "Move 2 tiles, damage enemies in path",
-        cooldown = 3,
-        currentCooldown = 0,
-        params = {
-            range = 2,           -- 冲锋距离
-            damageMultiplier = 1.0 -- 伤害倍率
-        },
-        execute = function(user, direction, game, params)
-            local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
-            local GRID_SIZE = Config.GRID.SIZE
-            local dir = DIRECTIONS[direction]
-            if not dir then return false end
-
-            local baseDamage = user.attack[direction] or 0
-            local damage = math.floor(baseDamage * (params.damageMultiplier or 1.0))
-            local moved = false
-            local range = params.range or 2
-
-            -- Record start position for visual effect
-            local startX, startY
-            if game.getScreenPos then
-                startX, startY = game.getScreenPos(user.gridX, user.gridY)
-            end
-
-            for step = 1, range do
-                local newX = user.gridX + dir.dx
-                local newY = user.gridY + dir.dy
-
-                if newX < 1 or newX > GRID_SIZE or newY < 1 or newY > GRID_SIZE then
-                    break
-                end
-
-                local targetCell = game.grid[newY][newX]
-                if targetCell.card then
-                    if targetCell.card.type ~= user.type then
-                        targetCell.card.hp = targetCell.card.hp - damage
-                        game.createDamageText(targetCell.card, damage)
-                        if targetCell.card.hp <= 0 then
-                            game.removeCard(targetCell.card)
-                        end
-                    end
-                    break
-                else
-                    game.moveCard(user, newX, newY)
-                    moved = true
-                end
-            end
-
-            -- Create charge trail visual effect
-            if moved and game.getScreenPos and game.createSkillEffect then
-                local endX, endY = game.getScreenPos(user.gridX, user.gridY)
-                game.createSkillEffect("charge_trail", {
-                    startX = startX, startY = startY,
-                    endX = endX, endY = endY,
-                    duration = 0.3
-                })
-                if game.triggerScreenShake then
-                    game.triggerScreenShake(5, 0.15)
-                end
-            end
-
-            return moved
-        end
-    },
-
-    -- 2. Lifesteal - Damage and heal
-    {
-        id = "lifesteal",
-        name = "Lifesteal",
-        description = "Deal damage, heal 50% of damage dealt",
-        cooldown = 4,
-        currentCooldown = 0,
-        params = {
-            bonusDamage = 2,    -- 额外伤害
-            healPercent = 0.5   -- 治疗比例
-        },
-        execute = function(user, direction, game, params)
-            local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
-            local GRID_SIZE = Config.GRID.SIZE
-            local dir = DIRECTIONS[direction]
-            if not dir then return false end
-
-            local targetX = user.gridX + dir.dx
-            local targetY = user.gridY + dir.dy
-
-            if targetX < 1 or targetX > GRID_SIZE or targetY < 1 or targetY > GRID_SIZE then
-                return false
-            end
-
-            local targetCell = game.grid[targetY][targetX]
-            if not targetCell.card or targetCell.card.type == user.type then
-                return false
-            end
-
-            local bonusDamage = params.bonusDamage or 2
-            local healPercent = params.healPercent or 0.5
-            local damage = (user.attack[direction] or 0) + bonusDamage
-            local heal = math.ceil(damage * healPercent)
-
-            targetCell.card.hp = targetCell.card.hp - damage
-            user.hp = math.min(user.hp + heal, user.maxHp)
-
-            game.createDamageText(targetCell.card, damage)
-            game.createHealText(user, heal)
-
-            -- Create lifesteal visual effect
-            if game.getScreenPos and game.createSkillEffect then
-                local userX, userY = game.getScreenPos(user.gridX, user.gridY)
-                local targetScreenX, targetScreenY = game.getScreenPos(targetX, targetY)
-                game.createSkillEffect("lifesteal_line", {
-                    startX = userX, startY = userY,
-                    endX = targetScreenX, endY = targetScreenY,
-                    duration = 0.4
-                })
-                if game.triggerScreenShake then
-                    game.triggerScreenShake(3, 0.1)
-                end
-            end
-
-            if targetCell.card.hp <= 0 then
-                game.removeCard(targetCell.card)
-            end
-
-            return true
-        end
-    },
-
-    -- 3. Whirlwind - Attack all adjacent enemies
-    {
-        id = "whirlwind",
-        name = "Whirlwind",
-        description = "Attack all 8 adjacent enemies",
-        cooldown = 5,
-        currentCooldown = 0,
-        params = {
-            damageMultiplier = 1.0 -- 伤害倍率
-        },
-        execute = function(user, _, game, params)
-            local DIRECTIONS = game.DIRECTIONS or Config.DIRECTIONS
-            local GRID_SIZE = Config.GRID.SIZE
-            local hitAny = false
-            local damageMultiplier = params.damageMultiplier or 1.0
-
-            -- Create whirlwind area effect
-            if game.getScreenPos and game.createSkillEffect then
-                local centerX, centerY = game.getScreenPos(user.gridX, user.gridY)
-                game.createSkillEffect("whirlwind_area", {
-                    centerX = centerX, centerY = centerY,
-                    duration = 0.4
-                })
-            end
-
-            for dirKey, dir in pairs(DIRECTIONS) do
-                local targetX = user.gridX + dir.dx
-                local targetY = user.gridY + dir.dy
-
-                if targetX >= 1 and targetX <= GRID_SIZE and targetY >= 1 and targetY <= GRID_SIZE then
-                    local targetCell = game.grid[targetY][targetX]
-                    if targetCell.card and targetCell.card.type ~= user.type then
-                        local baseDamage = user.attack[dirKey] or 0
-                        local damage = math.floor(baseDamage * damageMultiplier)
-                        targetCell.card.hp = targetCell.card.hp - damage
-                        game.createDamageText(targetCell.card, damage)
-
-                        if targetCell.card.hp <= 0 then
-                            game.removeCard(targetCell.card)
-                        end
-                        hitAny = true
-                    end
-                end
-            end
-
-            -- Trigger screen shake for whirlwind
-            if hitAny and game.triggerScreenShake then
-                game.triggerScreenShake(5, 0.15)
-            end
-
-            return hitAny
-        end
-    },
-
-    -- 4. Shield - Temporary protection
-    {
-        id = "shield",
-        name = "Shield",
-        description = "Gain temporary shield",
-        cooldown = 4,
-        currentCooldown = 0,
-        params = {
-            amount = 5 -- 护盾值
-        },
-        execute = function(user, _, game, params)
-            local shieldAmount = params.amount or 5
-            user.shield = (user.shield or 0) + shieldAmount
-            game.createShieldText(user, shieldAmount)
-
-            -- Create shield ring visual effect
-            if game.getScreenPos and game.createSkillEffect then
-                local centerX, centerY = game.getScreenPos(user.gridX, user.gridY)
-                game.createSkillEffect("shield_ring", {
-                    centerX = centerX, centerY = centerY,
-                    duration = 0.4
-                })
-            end
-
-            return true
-        end
-    }
-}
+-- Skill definitions (empty - no skills)
+Skills.SKILLS = {}
 
 -- Get skill definition by ID
 function Skills.getSkillById(skillId)
@@ -237,7 +24,6 @@ local playerSkills = {}
 -- Initialize default skills
 function Skills.init()
     playerSkills = {}
-    Skills.learnSkill("charge")
 end
 
 -- Learn a skill
@@ -254,7 +40,6 @@ function Skills.learnSkill(skillId)
 
     for _, skillDef in ipairs(Skills.SKILLS) do
         if skillDef.id == skillId then
-            -- Deep copy params
             local paramsCopy = nil
             if skillDef.params then
                 paramsCopy = {}
@@ -313,21 +98,8 @@ function Skills.tickCooldowns()
     end
 end
 
--- Absorb skill from enemy
+-- Absorb skill from enemy (disabled)
 function Skills.absorbSkill(enemyName)
-    local skillMap = {
-        ["Vampire"] = "lifesteal",
-        ["Orc"] = "charge",
-        ["Demon"] = "whirlwind"
-    }
-
-    local skillId = skillMap[enemyName]
-    if skillId then
-        local success, msg = Skills.learnSkill(skillId)
-        if success then
-            return skillId
-        end
-    end
     return nil
 end
 

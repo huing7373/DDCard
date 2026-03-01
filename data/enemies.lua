@@ -61,9 +61,6 @@ Enemies.TEMPLATES = {
         attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
         moveType = "eight_way",
         moveRange = 1,
-        skills = {
-            { id = "shield", params = { amount = 8 } }
-        }
     },
 }
 
