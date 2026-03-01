@@ -1,13 +1,14 @@
 -- 魔王 - 主入口
 -- Love2D 游戏框架
 
--- 加载新架构模块 (阶段 1-3)
+-- 加载新架构模块 (阶段 1-5)
 require("globals")
 local Object = require("engine.object")
 local Moveable = require("engine.moveable")
 local EventModule = require("engine.event")
 local Animation = require("systems.animation")
 local StateMachine = require("systems.state_machine")
+local UIModule = require("systems.ui_manager")
 
 -- 加载模块
 local Config = require("config")
