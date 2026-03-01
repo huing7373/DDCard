@@ -1,7 +1,7 @@
 -- 魔王 - 主入口
 -- Love2D 游戏框架
 
--- 加载新架构模块 (阶段 1-5)
+-- 加载新架构模块 (阶段 1-6)
 require("globals")
 local Object = require("engine.object")
 local Moveable = require("engine.moveable")
@@ -9,6 +9,7 @@ local EventModule = require("engine.event")
 local Animation = require("systems.animation")
 local StateMachine = require("systems.state_machine")
 local UIModule = require("systems.ui_manager")
+local Game = require("game")
 
 -- 加载模块
 local Config = require("config")
@@ -86,14 +87,23 @@ local createSkillContext
 
 -- 初始化游戏
 function love.load()
-    -- 加载支持中文的字体（微软雅黑）
-    local fontPath = "resources/fonts/msyh.ttc"
-    local success, font = pcall(love.graphics.newFont, fontPath, 14)
-    if success then
-        love.graphics.setFont(font)
+    -- 初始化 Game 单例 (新架构)
+    local game = Game.getInstance()
+    game:start_up()
+
+    -- 使用 Game 加载的字体，或回退到手动加载
+    if G.FONT and G.FONT.NORMAL then
+        love.graphics.setFont(G.FONT.NORMAL)
     else
-        love.graphics.setNewFont(14)
-        print("Warning: Chinese font not found, using default font")
+        -- 回退：手动加载字体
+        local fontPath = "resources/fonts/msyh.ttc"
+        local success, font = pcall(love.graphics.newFont, fontPath, 14)
+        if success then
+            love.graphics.setFont(font)
+        else
+            love.graphics.setNewFont(14)
+            print("Warning: Chinese font not found, using default font")
+        end
     end
 
     -- 初始化网格
@@ -309,6 +319,10 @@ end
 
 -- 更新游戏逻辑
 function love.update(dt)
+    -- 更新 Game 单例 (事件队列、Moveable 实体)
+    local game = Game.getInstance()
+    game:update(dt)
+
     local mx, my = love.mouse.getPosition()
     -- 调整屏幕震动偏移
     local adjustedMx = mx - animState.screenShake.offsetX
