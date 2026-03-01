@@ -24,6 +24,9 @@ local Progression = require("progression")
 local Skills = require("skills")
 local Roguelike = require("roguelike")
 local Draw = require("functions.draw")
+local Battle = require("functions.battle")
+local Turns = require("functions.turns")
+local GameFlow = require("functions.game_flow")
 
 -- 常用配置值的本地引用
 local GRID_SIZE = Config.GRID.SIZE
@@ -185,58 +188,15 @@ moveCard = function(card, newX, newY)
     Grid.moveCard(gameState.grid, card, newX, newY)
 end
 
--- 加载关卡
+-- 加载关卡 (委托给 GameFlow 模块)
 loadLevel = function(levelIndex)
-    gameState.currentLevel = levelIndex
-    local levelData = Levels.getLevel(levelIndex)
-
-    if not levelData then
-        print("No more levels!")
-        gameState.state = GAME_STATE.VICTORY
-        return
-    end
-
-    -- 清除旧敌人
-    for _, enemy in ipairs(gameState.enemies) do
-        Grid.removeCard(gameState.grid, enemy)
-    end
-    gameState.enemies = {}
-
-    -- 从卡牌列表移除敌人
-    for i = #gameState.cards, 1, -1 do
-        if gameState.cards[i].type == Card.TYPE.ENEMY then
-            table.remove(gameState.cards, i)
-        end
-    end
-
-    -- 生成敌人前重置玩家位置到默认位置
-    if gameState.player then
-        Grid.removeCard(gameState.grid, gameState.player)
-        Grid.placeCard(gameState.grid, gameState.player, Config.PLAYER.DEFAULT_GRID_X, Config.PLAYER.DEFAULT_GRID_Y)
-    end
-
-    -- 根据难度缩放创建新敌人
-    for _, enemyData in ipairs(levelData.enemies) do
-        -- 如果敌人会生成在玩家位置则跳过
-        if enemyData.x == gameState.player.gridX and enemyData.y == gameState.player.gridY then
-            print(string.format("Warning: Enemy spawn at player position (%d,%d), skipping", enemyData.x, enemyData.y))
-        else
-            local enemyParams = Levels.createEnemyFromTemplate(enemyData.template, enemyData.x, enemyData.y)
-            if enemyParams then
-                enemyParams.type = Card.TYPE.ENEMY
-                local enemy = Card.new(enemyParams)
-                Roguelike.applyDifficultyToEnemy(enemy)
-                placeCard(enemy)
-            end
-        end
-    end
-
-    -- 重置回合状态
-    gameState.turnNumber = 1
-    gameState.state = GAME_STATE.PLAYER_TURN
-    uiState.showLevelSelect = false
-
-    print(string.format("Enter Level %d: %s", levelIndex, levelData.name))
+    GameFlow.loadLevel({
+        levelIndex = levelIndex,
+        gameState = gameState,
+        uiState = uiState,
+        placeCard = placeCard,
+        Card = Card,
+    })
 end
 
 -- 更新屏幕震动 (使用 Animation 系统)
@@ -666,289 +626,112 @@ function tryAttackAt(attacker, targetX, targetY)
     return false
 end
 
--- 执行攻击
+-- 执行攻击 (委托给 Battle 模块)
 performAttack = function(attacker, defender, direction)
-    local attackerDamage, defenderDamage = Combat.calculateDamage(attacker, defender, direction, DIRECTIONS)
-    local defenderKilled, attackerKilled = Combat.applyDamage(attacker, defender, attackerDamage, defenderDamage)
-
-    -- 创建伤害文本动画
-    local attackerScreenX, attackerScreenY = Utils.getGridCellCenter(attacker.gridX, attacker.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-    local defenderScreenX, defenderScreenY = Utils.getGridCellCenter(defender.gridX, defender.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-
-    if attackerDamage > 0 then
-        createDamageText(defenderScreenX, defenderScreenY, attackerDamage, Config.COLORS.DAMAGE)
-        -- 触发防御者闪烁
-        if defender.triggerFlash then
-            defender:triggerFlash(Config.EFFECTS.FLASH_DURATION)
-        end
-        -- 触发屏幕震动
-        triggerScreenShake(Config.EFFECTS.SHAKE_INTENSITY, Config.EFFECTS.SHAKE_DURATION)
-    end
-    if defenderDamage > 0 then
-        createDamageText(attackerScreenX, attackerScreenY, defenderDamage, Config.COLORS.COUNTER_DAMAGE)
-        -- 反击触发攻击者闪烁
-        if attacker.triggerFlash then
-            attacker:triggerFlash(Config.EFFECTS.FLASH_DURATION)
-        end
-    end
-
-    -- 处理死亡和奖励
-    if defenderKilled then
-        if attacker.hp > 0 then
-            grantKillReward(attacker, defender)
-        end
-        removeCard(defender)
-    end
-
-    if attackerKilled then
-        if defender.hp > 0 then
-            grantKillReward(defender, attacker)
-        end
-        removeCard(attacker)
-    end
-
-    print(string.format("Attack! %s -> %s: %d dmg, counter: %d dmg",
-        attacker.name, defender.name, attackerDamage, defenderDamage))
-end
-
--- 发放击杀奖励
-grantKillReward = function(killer, victim)
-    local hpRecover, randomDir, atkBonus = Combat.calculateKillReward(victim, Config)
-    Combat.applyHpRecovery(killer, hpRecover)
-
-    local killerScreenX, killerScreenY = Utils.getGridCellCenter(killer.gridX, killer.gridY, GRID_OFFSET_X, GRID_OFFSET_Y, CELL_SIZE)
-    createDamageText(killerScreenX, killerScreenY - 20, "+" .. hpRecover, Config.COLORS.HEAL)
-
-    if killer.type == Card.TYPE.PLAYER then
-        Combat.applyAtkBonus(killer, randomDir, atkBonus)
-
-        gameState.lastReward = {
-            hpRecover = hpRecover,
-            atkDir = randomDir,
-            atkBonus = atkBonus
-        }
-
-        local soulReward = Combat.calculateSoulReward(victim)
-        Progression.addSoulFragments(soulReward)
-        -- 已移除: Progression.addExp(victim.maxHp) - 击杀不再获得经验值
-
-        createDamageText(killerScreenX + 30, killerScreenY - 30, "+" .. soulReward .. " Soul", Config.COLORS.SOUL)
-
-        Roguelike.recordKill()
-
-        local absorbedSkill = Skills.absorbSkill(victim.name)
-        if absorbedSkill then
-            print("Absorbed new skill!")
-        end
-
-        print(string.format("Kill reward: +%d HP, %s atk+%d, soul+%d",
-            hpRecover, randomDir, atkBonus, soulReward))
-
-        -- 注意：击杀不再获得经验值，奖励在关卡结束时发放
-    end
-end
-
--- 结束玩家回合
-endPlayerTurn = function()
-    uiState.isMoving = false
-    uiState.moveTargets = {}
-    uiState.attackTargets = {}
-    gameState.state = GAME_STATE.ENEMY_TURN
-    turnState.currentEnemyIndex = 1
-    turnState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
-    print("Player turn end, enemy turn start")
-end
-
--- 更新敌人回合
-function updateEnemyTurn(dt)
-    if turnState.enemyActionDelay > 0 then
-        turnState.enemyActionDelay = turnState.enemyActionDelay - dt
-        return
-    end
-
-    if turnState.currentEnemyIndex > #gameState.enemies then
-        startPlayerTurn()
-        return
-    end
-
-    local enemy = gameState.enemies[turnState.currentEnemyIndex]
-    if enemy and enemy.hp > 0 then
-        performEnemyAction(enemy)
-    end
-
-    turnState.currentEnemyIndex = turnState.currentEnemyIndex + 1
-    turnState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
-end
-
--- 执行敌人行动
-function performEnemyAction(enemy)
-    local gameContext = {
-        grid = gameState.grid,
-        gridSize = GRID_SIZE,
-        player = gameState.player
-    }
-
-    local decision = AI.decideAction(enemy, gameContext, Card)
-
-    if decision.type == "skill" then
-        local skillData = decision.data
-        local skill = skillData.skill
-        local direction = skillData.direction
-
-        local skillContext = createSkillContext()
-        local success = skill.execute(enemy, direction, skillContext, skill.params or {})
-        if success then
-            skill.currentCooldown = skill.cooldown
-            print(string.format("Enemy %s used skill: %s", enemy.name, skill.name))
-        else
-            print(string.format("Enemy %s failed to use skill: %s", enemy.name, skill.name))
-        end
-    elseif decision.type == "attack" then
-        local attack = decision.data
-        performAttack(enemy, attack.target, attack.direction)
-        print(string.format("Enemy %s attacks player!", enemy.name))
-    elseif decision.type == "move" then
-        local move = decision.data
-        moveCard(enemy, move.x, move.y)
-        print(string.format("Enemy %s moved to (%d,%d)", enemy.name, move.x, move.y))
-    else
-        print(string.format("Enemy %s waits", enemy.name))
-    end
-end
-
--- 更新敌人技能冷却
-local function tickEnemyCooldowns()
-    for _, enemy in ipairs(gameState.enemies) do
-        if enemy.skills then
-            for _, skill in ipairs(enemy.skills) do
-                if skill.currentCooldown > 0 then
-                    skill.currentCooldown = skill.currentCooldown - 1
-                end
-            end
-        end
-    end
-end
-
--- 开始玩家回合
-startPlayerTurn = function()
-    gameState.state = GAME_STATE.PLAYER_TURN
-    gameState.turnNumber = gameState.turnNumber + 1
-    Skills.tickCooldowns()
-    tickEnemyCooldowns()
-    print(string.format("Turn %d - Player turn start", gameState.turnNumber))
-end
-
--- 从奖励池中随机生成3个不重复的奖励选项
-local function generateRewardOptions()
-    local pool = Utils.deepCopy(Config.LEVEL_REWARDS)
-    local options = {}
-    for i = 1, 3 do
-        if #pool == 0 then break end
-        local idx = math.random(#pool)
-        table.insert(options, pool[idx])
-        table.remove(pool, idx)
-    end
-    return options
-end
-
--- 应用选中的奖励并继续下一关
-local function applyRewardAndContinue(reward)
-    gameState.player.attack[reward.dir] = gameState.player.attack[reward.dir] + reward.bonus
-    uiState.showRewardSelect = false
-    uiState.rewardOptions = {}
-
-    print(string.format("Reward applied: %s +%d", reward.dir, reward.bonus))
-
-    -- 原关卡过渡逻辑
-    local levelData = Levels.getLevel(gameState.currentLevel)
-    if levelData and #levelData.branches > 0 then
-        uiState.showLevelSelect = true
-    elseif gameState.currentLevel >= Levels.getLevelCount() then
-        gameState.state = GAME_STATE.VICTORY
-        gameState.runResult = Roguelike.endRun(true, gameState.currentLevel)
-        uiState.showSettlement = true
-    else
-        loadLevel(gameState.currentLevel + 1)
-    end
-end
-
--- 检查游戏结束
-checkGameEnd = function()
-    if gameState.state == GAME_STATE.GAME_OVER or gameState.state == GAME_STATE.VICTORY or uiState.showLevelSelect or uiState.showSettlement or uiState.showRewardSelect then
-        return
-    end
-
-    if gameState.player == nil or gameState.player.hp <= 0 then
-        gameState.state = GAME_STATE.GAME_OVER
-        gameState.runResult = Roguelike.endRun(false, gameState.currentLevel)
-        uiState.showSettlement = true
-        print("Game Over - Player defeated")
-    elseif #gameState.enemies == 0 then
-        -- 显示奖励选择界面而不是立即继续
-        uiState.rewardOptions = generateRewardOptions()
-        uiState.showRewardSelect = true
-        print("Level complete! Choose your reward...")
-    end
-end
-
--- 重启游戏
-restartGame = function()
-    Grid.clear(gameState.grid, GRID_SIZE)
-
-    gameState.cards = {}
-    gameState.enemies = {}
-    Anim.damage_texts = {}
-    gameState.state = GAME_STATE.PLAYER_TURN
-    gameState.turnNumber = 1
-    gameState.currentLevel = 1
-    uiState.showLevelSelect = false
-    uiState.showUpgradeMenu = false
-    uiState.showRewardSelect = false
-    uiState.rewardOptions = {}
-    uiState.selectedSkillIndex = nil
-    uiState.isMoving = false
-    uiState.moveTargets = {}
-    uiState.attackTargets = {}
-
-    local inheritedSkill = Roguelike.getInheritedSkill()
-    Skills.reset()
-    if inheritedSkill then
-        Skills.learnSkill(inheritedSkill)
-    end
-
-    gameState.player = Card.new({
-        name = "Demon Lord",
-        type = Card.TYPE.PLAYER,
-        hp = Config.PLAYER.DEFAULT_HP,
-        maxHp = Config.PLAYER.DEFAULT_HP,
-        attack = Utils.deepCopy(Config.PLAYER.DEFAULT_ATTACK),
-        gridX = Config.PLAYER.DEFAULT_GRID_X,
-        gridY = Config.PLAYER.DEFAULT_GRID_Y
+    Battle.performAttack({
+        attacker = attacker,
+        defender = defender,
+        direction = direction,
+        createDamageText = createDamageText,
+        triggerScreenShake = triggerScreenShake,
+        removeCard = removeCard,
+        grantKillReward = grantKillReward,
     })
-    placeCard(gameState.player)
-
-    loadLevel(1)
-    print("Game restarted!")
 end
 
--- 开始新一轮
+-- 发放击杀奖励 (委托给 Battle 模块)
+grantKillReward = function(killer, victim)
+    Battle.grantKillReward({
+        killer = killer,
+        victim = victim,
+        createDamageText = createDamageText,
+        gameState = gameState,
+        Card = Card,
+    })
+end
+
+-- 结束玩家回合 (委托给 Turns 模块)
+endPlayerTurn = function()
+    Turns.endPlayerTurn({
+        gameState = gameState,
+        uiState = uiState,
+        turnState = turnState,
+    })
+end
+
+-- 更新敌人回合 (委托给 Turns 模块)
+function updateEnemyTurn(dt)
+    Turns.updateEnemyTurn({
+        dt = dt,
+        gameState = gameState,
+        turnState = turnState,
+        performEnemyAction = performEnemyAction,
+        onTurnEnd = startPlayerTurn,
+    })
+end
+
+-- 执行敌人行动 (委托给 Turns 模块)
+function performEnemyAction(enemy)
+    Turns.performEnemyAction({
+        enemy = enemy,
+        gameState = gameState,
+        createSkillContext = createSkillContext,
+        performAttack = performAttack,
+        moveCard = moveCard,
+        Card = Card,
+    })
+end
+
+-- 开始玩家回合 (委托给 Turns 模块)
+startPlayerTurn = function()
+    Turns.startPlayerTurn({
+        gameState = gameState,
+        enemies = gameState.enemies,
+    })
+end
+
+-- 应用选中的奖励并继续下一关 (委托给 GameFlow 模块)
+local function applyRewardAndContinue(reward)
+    GameFlow.applyRewardAndContinue({
+        reward = reward,
+        gameState = gameState,
+        uiState = uiState,
+        loadLevel = loadLevel,
+    })
+end
+
+-- 检查游戏结束 (委托给 GameFlow 模块)
+checkGameEnd = function()
+    GameFlow.checkGameEnd({
+        gameState = gameState,
+        uiState = uiState,
+    })
+end
+
+-- 重启游戏 (委托给 GameFlow 模块)
+restartGame = function()
+    GameFlow.restartGame({
+        gameState = gameState,
+        uiState = uiState,
+        Anim = Anim,
+        placeCard = placeCard,
+        Card = Card,
+    })
+end
+
+-- 开始新一轮 (委托给 GameFlow 模块)
 function startNewRun()
-    local skills = Skills.getPlayerSkills()
-    if #skills > 0 then
-        Roguelike.setInheritedSkill(skills[1].id)
-    end
-
-    Roguelike.startNewRun()
-    restartGame()
-    print("New run started!")
+    GameFlow.startNewRun({
+        restartGame = restartGame,
+    })
 end
 
--- 硬重置
+-- 硬重置 (委托给 GameFlow 模块)
 function hardReset()
-    Roguelike.hardReset()
-    Progression.reset()
-    restartGame()
-    print("New Game+ started!")
+    GameFlow.hardReset({
+        restartGame = restartGame,
+        Progression = Progression,
+    })
 end
 
 -- 创建伤害文本动画
