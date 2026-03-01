@@ -4,6 +4,7 @@
 
 local Object = require("engine.object")
 local EventModule = require("engine.event")
+local CardArea = require("entities.card_area")
 
 local Game = Object:extend()
 Game.__type = "Game"
@@ -26,6 +27,14 @@ function Game:init()
 
     -- 帧计数器
     self.frame = 0
+
+    -- 卡牌区域管理
+    self.card_areas = {}
+
+    -- 游戏实体引用
+    self.player = nil
+    self.enemies = {}
+    self.grid = nil
 end
 
 -- 获取单例实例
@@ -154,10 +163,87 @@ function Game:add_event_after(delay, func, queue_name)
     return self.event_manager:add_after(delay, func, queue_name)
 end
 
+-- 创建卡牌区域
+function Game:create_card_area(name, args)
+    local area = CardArea(args)
+    self.card_areas[name] = area
+    return area
+end
+
+-- 获取卡牌区域
+function Game:get_card_area(name)
+    return self.card_areas[name]
+end
+
+-- 移除卡牌区域
+function Game:remove_card_area(name)
+    local area = self.card_areas[name]
+    if area then
+        area:remove()
+        self.card_areas[name] = nil
+    end
+end
+
+-- 设置玩家
+function Game:set_player(player)
+    self.player = player
+end
+
+-- 添加敌人
+function Game:add_enemy(enemy)
+    table.insert(self.enemies, enemy)
+end
+
+-- 移除敌人
+function Game:remove_enemy(enemy)
+    for i, e in ipairs(self.enemies) do
+        if e == enemy then
+            table.remove(self.enemies, i)
+            return true
+        end
+    end
+    return false
+end
+
+-- 清空所有敌人
+function Game:clear_enemies()
+    self.enemies = {}
+end
+
+-- 获取所有敌人
+function Game:get_enemies()
+    return self.enemies
+end
+
+-- 更新所有卡牌区域
+function Game:update_card_areas(dt)
+    for _, area in pairs(self.card_areas) do
+        area:update(dt)
+    end
+end
+
+-- 绘制所有卡牌区域
+function Game:draw_card_areas()
+    for _, area in pairs(self.card_areas) do
+        area:draw()
+    end
+end
+
 -- 清理
 function Game:cleanup()
     -- 清空事件队列
     self.event_manager:clear_all()
+
+    -- 清理卡牌区域
+    for name, area in pairs(self.card_areas) do
+        area:remove()
+    end
+    self.card_areas = {}
+
+    -- 清理实体引用
+    self.player = nil
+    self.enemies = {}
+    self.grid = nil
 
     -- 重置实例追踪
     if G.reset_instances then
