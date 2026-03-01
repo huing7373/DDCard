@@ -7,7 +7,7 @@ local Enemies = {}
 -- 敌人模板
 -- 格式: name, hp, attack (8方向), moveType, moveRange, skills
 Enemies.TEMPLATES = {
-    兔子 = {
+    ["兔子"] = {
         name = "兔子",
         hp = 6,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 },
@@ -18,7 +18,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    左拳 = {
+    ["左拳"] = {
         name = "左拳",
         hp = 4,
         attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
@@ -29,7 +29,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    右拳 = {
+    ["右拳"] = {
         name = "右拳",
         hp = 4,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
@@ -40,7 +40,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    大钳蟹 = {
+    ["大钳蟹"] = {
         name = "猪仔",
         hp = 8,
         attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 },
@@ -51,7 +51,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    猪仔 = {
+    ["猪仔"] = {
         name = "大钳蟹",
         hp = 5,
         attack = { n = 0, ne = 0, e = 4, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
@@ -62,7 +62,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    跳鼠 = {
+    ["跳鼠"] = {
         name = "跳鼠",
         hp = 6,
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
@@ -73,7 +73,7 @@ Enemies.TEMPLATES = {
         }
     },
 
-    小恶魔 = {
+    ["小恶魔"] = {
         name = "小恶魔",
         hp = 13,
         attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
