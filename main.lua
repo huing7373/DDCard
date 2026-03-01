@@ -2,6 +2,9 @@
 -- 魔王 - Love2D 入口
 -- 薄层：仅包含 Love2D 回调，所有逻辑委托给 Game 单例
 
+local Logger = require("logger")
+Logger.init()
+
 local Game = require("game")
 
 -- 游戏实例
