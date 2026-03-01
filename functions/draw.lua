@@ -410,8 +410,8 @@ function Draw.skillEffects(skillEffects)
         elseif effect.type == "whirlwind_area" then
             -- 在周围8格绘制红色高亮
             for _, dir in pairs(DIRECTIONS) do
-                local cellX = effect.centerX + dir.dx * CELL_SIZE
-                local cellY = effect.centerY + dir.dy * CELL_SIZE
+                local cellX = effect.center_x + dir.dx * CELL_SIZE
+                local cellY = effect.center_y + dir.dy * CELL_SIZE
                 love.graphics.setColor(1, 0.3, 0.3, alpha * 0.5)
                 love.graphics.rectangle("fill", cellX - CELL_SIZE/2, cellY - CELL_SIZE/2, CELL_SIZE, CELL_SIZE)
             end
@@ -437,7 +437,7 @@ function Draw.skillEffects(skillEffects)
             local radius = 20 + progress * 30
             love.graphics.setColor(0.3, 0.6, 1, alpha * 0.6)
             love.graphics.setLineWidth(2)
-            love.graphics.circle("line", effect.centerX, effect.centerY, radius)
+            love.graphics.circle("line", effect.center_x, effect.center_y, radius)
             love.graphics.setLineWidth(1)
         end
     end
