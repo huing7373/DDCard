@@ -25,7 +25,7 @@ echo [1/3] Creating .love file...
 
 :: Create .love file (zip archive)
 cd /d "%~dp0"
-powershell -Command "Compress-Archive -Path 'main.lua','conf.lua','config.lua','utils.lua','ui.lua','combat.lua','grid.lua','card.lua','ai.lua','levels.lua','progression.lua','skills.lua','roguelike.lua','globals.lua','game.lua','engine','entities','resources' -DestinationPath '%BUILD_DIR%\%GAME_NAME%.zip' -Force"
+powershell -Command "Compress-Archive -Path 'main.lua','conf.lua','config.lua','utils.lua','ui.lua','combat.lua','grid.lua','card.lua','ai.lua','levels.lua','progression.lua','skills.lua','roguelike.lua','globals.lua','game.lua','engine','entities','systems','resources' -DestinationPath '%BUILD_DIR%\%GAME_NAME%.zip' -Force"
 move "%BUILD_DIR%\%GAME_NAME%.zip" "%BUILD_DIR%\%GAME_NAME%.love" >nul
 
 if exist "%BUILD_DIR%\%GAME_NAME%.love" (
