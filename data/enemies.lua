@@ -67,7 +67,7 @@ Enemies.TEMPLATES = {
         hp = 6,
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
         moveType = "diagonal_jump",
-        moveRange = 1,
+        moveRange = 2,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
