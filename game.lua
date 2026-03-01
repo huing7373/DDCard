@@ -497,6 +497,52 @@ function Game:enterMoveMode(card)
     )
 end
 
+-- 进入技能模式，显示技能范围内的可移动格子
+function Game:enterSkillMode(card, skill)
+    self.uiState.isMoving = true
+    self.uiState.selectedCard = card
+    self.uiState.moveTargets = {}
+    self.uiState.attackTargets = {}
+
+    -- 获取技能范围 (默认2格)
+    local range = (skill.params and skill.params.range) or 2
+
+    -- 计算范围内所有可达格子
+    for _, dir in pairs(self.DIRECTIONS) do
+        for dist = 1, range do
+            local targetX = card.gridX + dir.dx * dist
+            local targetY = card.gridY + dir.dy * dist
+
+            -- 检查边界
+            if targetX >= 1 and targetX <= self.GRID_SIZE and
+               targetY >= 1 and targetY <= self.GRID_SIZE then
+                local cell = self.gameState.grid[targetY][targetX]
+                if cell.card == nil then
+                    -- 空格子可以移动
+                    table.insert(self.uiState.moveTargets, {
+                        x = targetX,
+                        y = targetY,
+                        distance = dist
+                    })
+                elseif cell.card.type ~= card.type then
+                    -- 敌人格子可以攻击
+                    table.insert(self.uiState.attackTargets, {
+                        x = targetX,
+                        y = targetY,
+                        target = cell.card,
+                        distance = dist
+                    })
+                    break -- 遇到障碍物停止该方向
+                else
+                    break -- 遇到友方单位停止
+                end
+            else
+                break -- 超出边界停止
+            end
+        end
+    end
+end
+
 function Game:exitMoveMode()
     self.uiState.isMoving = false
     self.uiState.moveTargets = {}
@@ -588,6 +634,28 @@ function Game:getCardAtScreen(screenX, screenY)
     if gridPos then
         return self.modules.Grid.getCard(self.gameState.grid, gridPos.x, gridPos.y)
     end
+    return nil
+end
+
+-- 计算从玩家到目标格子的方向
+function Game:getDirectionToTarget(targetX, targetY)
+    local player = self.gameState.player
+    if not player then return nil end
+
+    local dx = targetX - player.gridX
+    local dy = targetY - player.gridY
+
+    -- 规范化方向向量 (转为 -1, 0, 1)
+    local signX = dx == 0 and 0 or (dx > 0 and 1 or -1)
+    local signY = dy == 0 and 0 or (dy > 0 and 1 or -1)
+
+    -- 根据方向向量确定方向键
+    for dirKey, dir in pairs(self.DIRECTIONS) do
+        if dir.dx == signX and dir.dy == signY then
+            return dirKey
+        end
+    end
+
     return nil
 end
 
@@ -709,12 +777,16 @@ function Game:draw()
 
     -- 帮助文本
     love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.print("Roguelike | U=Upgrade | 1-4=Skills", 10, 550)
+    love.graphics.print("Roguelike | U=Upgrade | Click skill to use", 10, 550)
 
     if self.gameState.state == self.GAME_STATE.PLAYER_TURN then
         if self.uiState.isMoving then
             love.graphics.setColor(0.3, 0.9, 0.3)
-            love.graphics.print("Green=Move Red=Attack | RightClick=Cancel | E=End Turn", 10, 570)
+            if self.uiState.selectedSkillIndex then
+                love.graphics.print("Click target to use skill | Click skill or RightClick to cancel", 10, 570)
+            else
+                love.graphics.print("Green=Move Red=Attack | RightClick=Cancel | E=End Turn", 10, 570)
+            end
         else
             love.graphics.print("Click card or Space to act | E=End Turn", 10, 570)
         end
@@ -763,24 +835,13 @@ function Game:keypressed(key)
         self:endPlayerTurn()
     elseif key == "u" then
         self.uiState.showUpgradeMenu = not self.uiState.showUpgradeMenu
-    elseif key == "1" or key == "2" or key == "3" or key == "4" then
-        local skillIndex = tonumber(key)
-        local skills = Skills.getPlayerSkills()
-        print(string.format("[Skill] Key %s pressed, skillIndex=%d, skills count=%d", key, skillIndex, #skills))
-        if skills[skillIndex] then
-            print(string.format("[Skill] Skill found: %s, cooldown=%d", skills[skillIndex].name, skills[skillIndex].currentCooldown))
-            if skills[skillIndex].currentCooldown == 0 then
-                self.uiState.selectedSkillIndex = skillIndex
-                self:enterMoveMode(self.gameState.player)
-                print("[Skill] Entered move mode for skill")
-            else
-                print("[Skill] Skill on cooldown")
-            end
-        else
-            print("[Skill] No skill at index " .. skillIndex)
-        end
     elseif self.uiState.isMoving then
-        print(string.format("[Input] In move mode, key=%s, selectedSkillIndex=%s", key, tostring(self.uiState.selectedSkillIndex)))
+        -- 技能模式下不使用方向键，只能用鼠标点击目标
+        if self.uiState.selectedSkillIndex then
+            return
+        end
+
+        -- 普通移动模式下仍然可以使用方向键
         local dirKey = nil
         if key == "up" or key == "w" then dirKey = "n"
         elseif key == "down" or key == "s" then dirKey = "s"
@@ -789,16 +850,11 @@ function Game:keypressed(key)
         end
 
         if dirKey then
-            print(string.format("[Input] Direction: %s", dirKey))
-            if self.uiState.selectedSkillIndex then
-                self:useSelectedSkill(dirKey)
-            else
-                local dir = self.DIRECTIONS[dirKey]
-                local newX = self.gameState.player.gridX + dir.dx
-                local newY = self.gameState.player.gridY + dir.dy
-                if not self:tryAttackAtDirection(self.gameState.player, dirKey) then
-                    self:tryMoveCard(self.gameState.player, newX, newY)
-                end
+            local dir = self.DIRECTIONS[dirKey]
+            local newX = self.gameState.player.gridX + dir.dx
+            local newY = self.gameState.player.gridY + dir.dy
+            if not self:tryAttackAtDirection(self.gameState.player, dirKey) then
+                self:tryMoveCard(self.gameState.player, newX, newY)
             end
         end
     end
@@ -878,12 +934,64 @@ function Game:mousepressed(x, y, button)
         return
     end
 
+    -- 技能栏点击
+    if button == 1 then
+        local Skills = self.modules.Skills
+        local skillBarX = Config.UI.SKILL_BAR_X
+        local skillBarY = Config.UI.SKILL_BAR_Y
+        local slotW = Config.UI.SKILL_SLOT_WIDTH
+        local slotH = Config.UI.SKILL_SLOT_HEIGHT
+
+        for i = 1, 4 do
+            local slotX = skillBarX + (i - 1) * (slotW + 5)
+            if Utils.isPointInRect(adjustedX, adjustedY, slotX, skillBarY, slotW, slotH) then
+                local skills = Skills.getPlayerSkills()
+                -- 再次点击同一技能，取消技能模式
+                if self.uiState.selectedSkillIndex == i then
+                    self:exitMoveMode()
+                    return
+                end
+                if skills[i] and skills[i].currentCooldown == 0 then
+                    self.uiState.selectedSkillIndex = i
+                    self:enterSkillMode(self.gameState.player, skills[i])
+                end
+                return
+            end
+        end
+    end
+
     if button == 1 then
         local clickedCard = self:getCardAtScreen(adjustedX, adjustedY)
         local gridPos = self:getGridAtScreen(adjustedX, adjustedY)
 
         if self.uiState.isMoving and gridPos then
-            if not self:tryAttackAt(self.gameState.player, gridPos.x, gridPos.y) then
+            -- 技能模式：点击目标执行技能
+            if self.uiState.selectedSkillIndex then
+                -- 检查是否为有效目标
+                local isValidTarget = false
+                for _, target in ipairs(self.uiState.moveTargets) do
+                    if target.x == gridPos.x and target.y == gridPos.y then
+                        isValidTarget = true
+                        break
+                    end
+                end
+                if not isValidTarget then
+                    for _, target in ipairs(self.uiState.attackTargets) do
+                        if target.x == gridPos.x and target.y == gridPos.y then
+                            isValidTarget = true
+                            break
+                        end
+                    end
+                end
+
+                if isValidTarget then
+                    local direction = self:getDirectionToTarget(gridPos.x, gridPos.y)
+                    if direction then
+                        self:useSelectedSkill(direction)
+                    end
+                end
+            -- 普通移动/攻击模式
+            elseif not self:tryAttackAt(self.gameState.player, gridPos.x, gridPos.y) then
                 self:tryMoveCard(self.gameState.player, gridPos.x, gridPos.y)
             end
         elseif clickedCard and clickedCard.type == self.modules.Card.TYPE.PLAYER then
