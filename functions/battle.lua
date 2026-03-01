@@ -93,7 +93,7 @@ function Battle.grantKillReward(context)
     createDamageText(killerScreenX, killerScreenY - 20, "+" .. hpRecover, Config.COLORS.HEAL)
 
     if killer.type == Card.TYPE.PLAYER then
-        Combat.applyAtkBonus(killer, randomDir, atkBonus)
+        -- Combat.applyAtkBonus(killer, randomDir, atkBonus)
 
         gameState.lastReward = {
             hpRecover = hpRecover,
@@ -103,6 +103,7 @@ function Battle.grantKillReward(context)
 
         local soulReward = Combat.calculateSoulReward(victim)
         Progression.addSoulFragments(soulReward)
+
 
         createDamageText(killerScreenX + 30, killerScreenY - 30, "+" .. soulReward .. " Soul", Config.COLORS.SOUL)
 

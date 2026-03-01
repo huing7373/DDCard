@@ -90,8 +90,9 @@ function Progression.addSoulFragments(amount)
     playerData.soulFragments = playerData.soulFragments + math.floor(amount * multiplier)
 end
 
--- Add experience
+-- Add experience (returns true if leveled up)
 function Progression.addExp(amount)
+    local oldLevel = playerData.level
     playerData.exp = playerData.exp + amount
     playerData.totalKills = playerData.totalKills + 1
 
@@ -102,6 +103,8 @@ function Progression.addExp(amount)
         playerData.evolutionPoints = playerData.evolutionPoints + 1
         expNeeded = Progression.getExpToNextLevel()
     end
+
+    return playerData.level > oldLevel
 end
 
 -- Find upgrade by ID
