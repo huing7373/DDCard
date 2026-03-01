@@ -8,18 +8,18 @@ local Levels = {}
 
 -- Enemy templates
 Levels.ENEMY_TEMPLATES = {
-    rab = {
-        name = "rab",
+    兔子 = {
+        name = "兔子",
         hp = 6,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 },
-        moveType = "eight_way",  -- 八向移动
+        moveType = "eight_way",  -- 十字移动
         moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    L_Hand = {
-        name = "L_Hand",
+    左拳 = {
+        name = "左拳",
         hp = 4,
         attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
         moveType = "cross",  -- 十字移动
@@ -28,8 +28,8 @@ Levels.ENEMY_TEMPLATES = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    R_Hand = {
-        name = "R_Hand",
+    右拳 = {
+        name = "右拳",
         hp = 4,
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
         moveType = "cross",  -- 十字移动
@@ -38,8 +38,8 @@ Levels.ENEMY_TEMPLATES = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    PX = {
-        name = "pig",
+    大钳蟹 = {
+        name = "猪仔",
         hp = 8,
         attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 },
         moveType = "diagonal",  -- 斜向移动
@@ -48,32 +48,32 @@ Levels.ENEMY_TEMPLATES = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    pig = {
-        name = "PX",
+    猪仔 = {
+        name = "大钳蟹",
         hp = 5,
-        attack = { n = 1, ne = 0, e = 3, se = 0, s = 1, sw = 0, w = 0, nw = 0 },
+        attack = { n = 0, ne = 0, e = 4, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
         moveType = "cross",  -- 十字移动
-        moveRange = 2,
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    TH = {
-        name = "TH",
+    跳鼠 = {
+        name = "跳鼠",
         hp = 6,
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
         moveType = "diagonal_jump",  -- 斜向跳跃
-        moveRange = 2,
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.0 } }
         }
     },
-    God = {
-        name = "God",
+    小恶魔 = {
+        name = "小恶魔",
         hp = 13,
         attack = { n = 2, ne = 0, e = 5, se = 0, s = 5, sw = 0, w = 5, nw = 0 },
-        moveType = "cross_jump",  -- 十字跳跃
-        moveRange = 2,
+        moveType = "eight_way",  -- 八向移动
+        moveRange = 1,
         skills = {
             { id = "whirlwind", params = { damageMultiplier = 1.5 } },
             { id = "shield", params = { amount = 8 } }
@@ -83,69 +83,67 @@ Levels.ENEMY_TEMPLATES = {
 
 -- Level data
 Levels.data = {
-    -- Level 1: rab Nest
+    -- Level 1: 兔子 Nest
     {
-        name = "rab Nest",
+        name = "兔子 Nest",
         enemies = {
-            { template = "rab", x = 1, y = 1 },
-            { template = "rab", x = 5, y = 1 }
+            { template = "兔子", x = 3, y = 1 },
         },
         branches = {2, 3}
     },
-    -- Level 2: L_Hand Graveyard (Route A)
+    -- Level 2: 左拳 Graveyard (Route A)
     {
         name = "Graveyard",
         enemies = {
-            { template = "rab", x = 3, y = 2 },
-            { template = "L_Hand", x = 5, y = 1 },
-            { template = "R_Hand", x = 1, y = 1 }
+            { template = "左拳", x = 1, y = 1 },
+            { template = "右拳", x = 5, y = 1 }
         },
         branches = {4}
     },
-    -- Level 3: pig Cave (Route B)
+    -- Level 3: 猪仔 Cave (Route B)
     {
-        name = "pig Cave",
+        name = "猪仔 Cave",
         enemies = {
-            { template = "pig", x = 1, y = 1 },
-            { template = "pig", x = 4, y = 1 },
-            { template = "pig", x = 1, y = 1 },
-            { template = "pig", x = 4, y = 1 }
+
+            { template = "猪仔", x = 2, y = 1 },
+
+            { template = "猪仔", x = 4, y = 1 }
         },
         branches = {4}
     },
-    -- Level 4: PX Camp
+    -- Level 4: 大钳蟹 Camp
     {
-        name = "PX Camp",
+        name = "大钳蟹 Camp",
         enemies = {
-            { template = "PX", x = 3, y = 1 },
-            { template = "rab", x = 4, y = 3 }
+            { template = "大钳蟹", x = 5, y = 5 },
+            { template = "猪仔", x = 3, y = 1 },
         },
         branches = {5, 6}
     },
-    -- Level 5: TH Castle (Route A)
+    -- Level 5: 跳鼠 Castle (Route A)
     {
-        name = "TH Castle",
+        name = "跳鼠 Castle",
         enemies = {
-            { template = "TH", x = 4, y = 2 },
-            { template = "L_Hand", x = 1, y = 4 }
+            { template = "跳鼠", x = 2, y = 1 },
+            { template = "跳鼠", x = 4, y = 5 }
         },
         branches = {7}
     },
-    -- Level 6: God Temple (Route B)
+    -- Level 6: 小恶魔 Temple (Route B)
     {
-        name = "God Temple",
+        name = "小恶魔 Temple",
         enemies = {
-            { template = "God", x = 3, y = 3 }
+            { template = "小恶魔", x = 3, y = 1 }
         },
         branches = {7}
     },
     -- Level 7: Final Boss
     {
-        name = "Dark Throne",
+        name = "Dark 跳鼠rone",
         enemies = {
-            { template = "God", x = 3, y = 2 },
-            { template = "TH", x = 1, y = 4 },
-            { template = "PX", x = 4, y = 4 }
+            { template = "小恶魔", x = 3, y = 1 },
+            { template = "左拳", x = 1, y = 1 },
+            { template = "右拳", x = 5, y = 1 }
         },
         branches = {}
     }
