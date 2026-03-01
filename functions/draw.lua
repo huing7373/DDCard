@@ -125,7 +125,7 @@ function Draw.progressionInfo()
     love.graphics.setColor(1, 0.9, 0.3)
     love.graphics.print(string.format("Level: %d", data.level), infoX, infoY + 20)
 
-    local expNeeded = Progression.getExpForLevel(data.level + 1)
+    local expNeeded = Progression.getExpToNextLevel()
     love.graphics.setColor(0.7, 0.7, 0.7)
     if expNeeded then
         love.graphics.print(string.format("EXP: %d/%d", data.exp, expNeeded), infoX, infoY + 40)
