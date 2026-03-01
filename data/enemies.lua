@@ -13,9 +13,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 2, sw = 0, w = 0, nw = 0 },
         moveType = "eight_way",
         moveRange = 1,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["左拳"] = {
@@ -24,9 +21,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 0, e = 2, se = 0, s = 0, sw = 0, w = 0, nw = 0 },
         moveType = "cross",
         moveRange = 1,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["右拳"] = {
@@ -35,9 +29,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 0, e = 0, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
         moveType = "cross",
         moveRange = 1,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["大钳蟹"] = {
@@ -46,9 +37,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 0, e = 0, se = 2, s = 0, sw = 2, w = 0, nw = 0 },
         moveType = "diagonal",
         moveRange = 1,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["猪仔"] = {
@@ -57,9 +45,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 0, e = 4, se = 0, s = 0, sw = 0, w = 2, nw = 0 },
         moveType = "cross",
         moveRange = 1,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["跳鼠"] = {
@@ -68,9 +53,6 @@ Enemies.TEMPLATES = {
         attack = { n = 0, ne = 4, e = 0, se = 4, s = 0, sw = 4, w = 0, nw = 4 },
         moveType = "diagonal_jump",
         moveRange = 2,
-        skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.0 } }
-        }
     },
 
     ["小恶魔"] = {
@@ -80,7 +62,6 @@ Enemies.TEMPLATES = {
         moveType = "eight_way",
         moveRange = 1,
         skills = {
-            { id = "whirlwind", params = { damageMultiplier = 1.5 } },
             { id = "shield", params = { amount = 8 } }
         }
     },
