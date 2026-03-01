@@ -60,18 +60,13 @@ local uiState = {
     rewardOptions = {},         -- 当前三个奖励选项
 }
 
--- 动画状态
-local animState = {
-    damageTexts = {},
+-- 动画系统单例 (新架构)
+local Anim = Animation.getInstance()
+
+-- 敌人回合状态 (游戏逻辑，非动画)
+local turnState = {
     enemyActionDelay = 0,
     currentEnemyIndex = 0,
-    screenShake = {
-        intensity = 0,
-        timer = 0,
-        offsetX = 0,
-        offsetY = 0,
-    },
-    skillEffects = {},
 }
 
 -- UI按钮
@@ -126,6 +121,22 @@ function love.load()
 
     -- 初始化技能系统
     Skills.init()
+
+    -- 初始化游戏状态机 (新架构)
+    G.STATE_MACHINE = StateMachine({
+        initial_state = G.STATES.PLAYER_TURN,
+        on_state_change = function(old_state, new_state)
+            -- 同步到 gameState.state (兼容层)
+            gameState.state = G.STATE_NAMES[new_state] and
+                GAME_STATE[G.STATE_NAMES[new_state]] or new_state
+        end
+    })
+
+    -- 定义状态
+    G.STATE_MACHINE:define_state(G.STATES.PLAYER_TURN, {})
+    G.STATE_MACHINE:define_state(G.STATES.ENEMY_TURN, {})
+    G.STATE_MACHINE:define_state(G.STATES.GAME_OVER, {})
+    G.STATE_MACHINE:define_state(G.STATES.VICTORY, {})
 
     -- 创建UI按钮
     buttons = {
@@ -227,50 +238,30 @@ loadLevel = function(levelIndex)
     print(string.format("Enter Level %d: %s", levelIndex, levelData.name))
 end
 
--- 更新屏幕震动
+-- 更新屏幕震动 (使用 Animation 系统)
 local function updateScreenShake(dt)
-    local shake = animState.screenShake
-    if shake.timer > 0 then
-        shake.timer = shake.timer - dt
-        local progress = shake.timer / Config.EFFECTS.SHAKE_DURATION
-        local currentIntensity = shake.intensity * progress
-        shake.offsetX = (math.random() * 2 - 1) * currentIntensity
-        shake.offsetY = (math.random() * 2 - 1) * currentIntensity
-    else
-        shake.offsetX = 0
-        shake.offsetY = 0
-        shake.intensity = 0
-    end
+    Anim:update_screen_shake(dt)
 end
 
--- 触发屏幕震动
+-- 触发屏幕震动 (使用 Animation 系统)
 local function triggerScreenShake(intensity, duration)
-    animState.screenShake.intensity = intensity or Config.EFFECTS.SHAKE_INTENSITY
-    animState.screenShake.timer = duration or Config.EFFECTS.SHAKE_DURATION
+    Anim:shake(intensity, duration)
 end
 
--- 更新技能特效
+-- 更新技能特效 (使用 Animation 系统)
 local function updateSkillEffects(dt)
-    for i = #animState.skillEffects, 1, -1 do
-        local effect = animState.skillEffects[i]
-        effect.timer = effect.timer + dt
-        if effect.timer >= effect.duration then
-            table.remove(animState.skillEffects, i)
-        end
-    end
+    Anim:update_skill_effects(dt)
 end
 
--- 创建技能特效
+-- 创建技能特效 (使用 Animation 系统)
 local function createSkillEffect(effectType, params)
-    local effect = {
+    Anim:add_skill_effect({
         type = effectType,
-        timer = 0,
+        center_x = params.centerX,
+        center_y = params.centerY,
         duration = params.duration or Config.EFFECTS.SKILL_EFFECT_DURATION,
-    }
-    for k, v in pairs(params) do
-        effect[k] = v
-    end
-    table.insert(animState.skillEffects, effect)
+        data = params,
+    })
 end
 
 -- 创建技能执行上下文（玩家和敌人共用）
@@ -325,8 +316,8 @@ function love.update(dt)
 
     local mx, my = love.mouse.getPosition()
     -- 调整屏幕震动偏移
-    local adjustedMx = mx - animState.screenShake.offsetX
-    local adjustedMy = my - animState.screenShake.offsetY
+    local adjustedMx = mx - Anim.screen_shake.offsetX
+    local adjustedMy = my - Anim.screen_shake.offsetY
     uiState.hoveredCard = getCardAtScreen(adjustedMx, adjustedMy)
 
     updateDamageTexts(dt)
@@ -341,9 +332,9 @@ function love.update(dt)
     checkGameEnd()
 end
 
--- 绘制技能特效
+-- 绘制技能特效 (使用 Animation 系统数据)
 local function drawSkillEffects()
-    for _, effect in ipairs(animState.skillEffects) do
+    for _, effect in ipairs(Anim.skill_effects) do
         local progress = effect.timer / effect.duration
         local alpha = 1 - progress
 
@@ -396,8 +387,8 @@ function love.draw()
     love.graphics.setBackgroundColor(0.1, 0.1, 0.15)
 
     -- 应用屏幕震动偏移
-    local shakeX = animState.screenShake.offsetX
-    local shakeY = animState.screenShake.offsetY
+    local shakeX = Anim.screen_shake.offsetX
+    local shakeY = Anim.screen_shake.offsetY
     love.graphics.push()
     love.graphics.translate(shakeX, shakeY)
 
@@ -625,8 +616,8 @@ function love.mousepressed(x, y, button)
     end
 
     -- 调整屏幕震动偏移
-    local adjustedX = x - animState.screenShake.offsetX
-    local adjustedY = y - animState.screenShake.offsetY
+    local adjustedX = x - Anim.screen_shake.offsetX
+    local adjustedY = y - Anim.screen_shake.offsetY
 
     -- 奖励选择
     if uiState.showRewardSelect and button == 1 then
@@ -876,30 +867,30 @@ endPlayerTurn = function()
     uiState.moveTargets = {}
     uiState.attackTargets = {}
     gameState.state = GAME_STATE.ENEMY_TURN
-    animState.currentEnemyIndex = 1
-    animState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
+    turnState.currentEnemyIndex = 1
+    turnState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
     print("Player turn end, enemy turn start")
 end
 
 -- 更新敌人回合
 function updateEnemyTurn(dt)
-    if animState.enemyActionDelay > 0 then
-        animState.enemyActionDelay = animState.enemyActionDelay - dt
+    if turnState.enemyActionDelay > 0 then
+        turnState.enemyActionDelay = turnState.enemyActionDelay - dt
         return
     end
 
-    if animState.currentEnemyIndex > #gameState.enemies then
+    if turnState.currentEnemyIndex > #gameState.enemies then
         startPlayerTurn()
         return
     end
 
-    local enemy = gameState.enemies[animState.currentEnemyIndex]
+    local enemy = gameState.enemies[turnState.currentEnemyIndex]
     if enemy and enemy.hp > 0 then
         performEnemyAction(enemy)
     end
 
-    animState.currentEnemyIndex = animState.currentEnemyIndex + 1
-    animState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
+    turnState.currentEnemyIndex = turnState.currentEnemyIndex + 1
+    turnState.enemyActionDelay = Config.TIMING.ENEMY_ACTION_DELAY
 end
 
 -- 执行敌人行动
@@ -1019,7 +1010,7 @@ restartGame = function()
 
     gameState.cards = {}
     gameState.enemies = {}
-    animState.damageTexts = {}
+    Anim.damage_texts = {}
     gameState.state = GAME_STATE.PLAYER_TURN
     gameState.turnNumber = 1
     gameState.currentLevel = 1
@@ -1088,7 +1079,7 @@ createDamageText = function(x, y, damage, color, useScale)
         shouldScale = type(damage) == "number"
     end
 
-    table.insert(animState.damageTexts, {
+    table.insert(Anim.damage_texts, {
         x = x,
         y = y,
         text = text,
@@ -1102,21 +1093,21 @@ end
 
 -- 更新伤害文本
 function updateDamageTexts(dt)
-    for i = #animState.damageTexts, 1, -1 do
-        local dmg = animState.damageTexts[i]
+    for i = #Anim.damage_texts, 1, -1 do
+        local dmg = Anim.damage_texts[i]
         dmg.timer = dmg.timer + dt
         dmg.y = dmg.y - Config.TIMING.DAMAGE_TEXT_SPEED * dt
         dmg.alpha = 1 - (dmg.timer / dmg.duration)
 
         if dmg.timer >= dmg.duration then
-            table.remove(animState.damageTexts, i)
+            table.remove(Anim.damage_texts, i)
         end
     end
 end
 
 -- 绘制伤害文本
 function drawDamageTexts()
-    for _, dmg in ipairs(animState.damageTexts) do
+    for _, dmg in ipairs(Anim.damage_texts) do
         love.graphics.setColor(dmg.color[1], dmg.color[2], dmg.color[3], dmg.alpha)
         local font = love.graphics.getFont()
         local textW = font:getWidth(dmg.text)

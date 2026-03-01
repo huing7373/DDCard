@@ -22,12 +22,12 @@ function Animation:init()
     -- 伤害文字列表
     self.damage_texts = {}
 
-    -- 屏幕震动
+    -- 屏幕震动 (使用 camelCase 兼容 main.lua)
     self.screen_shake = {
         intensity = 0,
         timer = 0,
-        offset_x = 0,
-        offset_y = 0,
+        offsetX = 0,
+        offsetY = 0,
     }
 
     -- 技能特效列表
@@ -139,23 +139,23 @@ function Animation:update_screen_shake(dt)
     if shake.timer > 0 then
         shake.timer = shake.timer - dt
         local intensity = shake.intensity * (shake.timer / self.config.shake_duration)
-        shake.offset_x = (math.random() - 0.5) * 2 * intensity
-        shake.offset_y = (math.random() - 0.5) * 2 * intensity
+        shake.offsetX = (math.random() - 0.5) * 2 * intensity
+        shake.offsetY = (math.random() - 0.5) * 2 * intensity
     else
-        shake.offset_x = 0
-        shake.offset_y = 0
+        shake.offsetX = 0
+        shake.offsetY = 0
     end
 end
 
 -- 获取震动偏移
 function Animation:get_shake_offset()
-    return self.screen_shake.offset_x, self.screen_shake.offset_y
+    return self.screen_shake.offsetX, self.screen_shake.offsetY
 end
 
 -- 应用震动变换 (调用 love.graphics.push/translate)
 function Animation:apply_shake()
     love.graphics.push()
-    love.graphics.translate(self.screen_shake.offset_x, self.screen_shake.offset_y)
+    love.graphics.translate(self.screen_shake.offsetX, self.screen_shake.offsetY)
 end
 
 -- 结束震动变换 (调用 love.graphics.pop)
@@ -341,8 +341,8 @@ function Animation:clear_all()
     self.screen_shake = {
         intensity = 0,
         timer = 0,
-        offset_x = 0,
-        offset_y = 0,
+        offsetX = 0,
+        offsetY = 0,
     }
 end
 
